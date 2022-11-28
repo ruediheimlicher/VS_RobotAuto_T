@@ -25,6 +25,8 @@
 // REPLACE WITH YOUR ESP RECEIVER'S MAC ADDRESS
 uint8_t broadcastAddress1[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
 uint8_t broadcastAddress2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+//uint8_t broadcastAddress2[] = {0xBC, 0xAA, 0xB5, 0x7B, 0xA3, 0x28}; // ESP8266 D1 MINI
+
 uint8_t broadcastAddress3[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 #define NUM_SERVOS 4
@@ -55,6 +57,10 @@ Ticker debouncetimer;
 elapsedMillis debouncemillis;
 #define MAX_CHECKS 10
 uint8_t DebouncedState;
+uint8_t lastDebouncedState;
+uint8_t debouncestatus;
+
+
 uint8_t State[MAX_CHECKS];
 uint8_t Index = 0;
 /*
@@ -66,31 +72,44 @@ taste3: GPIO5
 */
 
 #define TASTE0 14
-#define TASTE1 15
-#define TASTE2 16
-#define TASTE3 17
+//#define TASTE1 15
+//#define TASTE2 16
+//#define TASTE3 17
+#define TASTE1 27
+#define TASTE2 26
+#define TASTE3 25
+uint8_t tastencounter = 0;
 
-uint8_t tastenstatus() // bitmusteraller Tasten
-{
-  uint8_t returnstatus = 0;
-  if(digitalRead(TASTE0))
-  {
-    returnstatus |= (1<<0);
-  }
-  if(digitalRead(TASTE1))
-  {
-  returnstatus |= (1<<1);
-  }
-  if(digitalRead(TASTE2))
-  {
-    returnstatus |= (1<<2);
-  }
-  if(digitalRead(TASTE3))
-  {
-    returnstatus |= (1<<3);
-  }
-return returnstatus;
-}
+
+ uint8_t tastenstatus() // bitmuster aller Tasten
+ {
+   uint8_t returnstatus = 0;
+ if(digitalRead(TASTE0) == 0)
+   {
+    
+        tastencounter++;
+     returnstatus |= (1<<0);
+   }
+  
+ if(digitalRead(TASTE1) == 0)
+   {
+     returnstatus |= (1<<1);
+   }
+  if(digitalRead(TASTE2) == 0)
+   {
+     returnstatus |= (1<<2);
+   }
+  if(digitalRead(TASTE3) == 0)
+   {
+     returnstatus |= (1<<3);
+   }
+  
+ //Serial.printf("Tastenstatus: %d\n",returnstatus);
+ return returnstatus;
+
+ }
+ 
+
 
 void DebounceSwitch3 (void)
 {
@@ -127,6 +146,7 @@ typedef struct canal_struct
 canal_struct canaldata;
 
 elapsedMillis sendtimer;
+uint8_t loopstatus = 0;
 
 
 
@@ -176,6 +196,11 @@ uint16_t servoticks(uint16_t inticks)
 void setup() {
   Serial.begin(74880);
 
+  pinMode(TASTE0,INPUT_PULLUP);
+  pinMode(TASTE1,INPUT_PULLUP);
+  pinMode(TASTE2,INPUT_PULLUP);
+  pinMode(TASTE3,INPUT_PULLUP);
+
 pinMode(LED_BUILTIN, OUTPUT); 
   WiFi.mode(WIFI_STA);
  
@@ -186,7 +211,11 @@ pinMode(LED_BUILTIN, OUTPUT);
   pinMode(TASTE0,INPUT_PULLUP);
   pinMode(TASTE1,INPUT_PULLUP);
   
-  esp_now_register_send_cb(OnDataSent);
+  //esp_now_register_send_cb(OnDataSent);
+  esp_err_t registererr = esp_now_register_send_cb(OnDataSent);
+  Serial.printf("registererr: %d\n",registererr);
+
+
    
   // register peer
   peerInfo.channel = 0;  
@@ -194,9 +223,14 @@ pinMode(LED_BUILTIN, OUTPUT);
   // register first peer  
   memcpy(peerInfo.peer_addr, broadcastAddress1, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
-    Serial.println("Failed to add peer");
+    Serial.println("Failed to add peer 1");
     return;
   }
+  else
+  {
+    Serial.println("add peer 1 OK");
+  }
+
   // register second peer  
   memcpy(peerInfo.peer_addr, broadcastAddress2, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
@@ -219,12 +253,11 @@ pinMode(LED_BUILTIN, OUTPUT);
 
   
 }
- uint8_t loopstatus = 0;
+ 
  
 void loop() 
 {
-/*
-   */
+
 if (ledmillis > ledintervall)
   {
     ledmillis = 0;
@@ -233,7 +266,7 @@ if (ledmillis > ledintervall)
     Serial.println("led");
   }
 
- if (debouncemillis > 2)
+ if (debouncemillis > 5)
   {
 
     debouncemillis = 0;
@@ -244,6 +277,19 @@ if (ledmillis > ledintervall)
   
   if (sendtimer > SENDINTERVALL)
   {
+
+if (DebouncedState & 0x04)
+    {
+      if(debouncestatus & 0x04)
+      {}
+      else
+      {
+      debouncestatus |= 0x04;
+      tastencounter++;
+      }
+    }
+
+
 
 int rawlx = adc1_get_raw(ADC1_CHANNEL_0);
 uint16_t lx = tickslimited(rawlx);
@@ -260,6 +306,12 @@ int rawly = adc1_get_raw(ADC1_CHANNEL_3);
 
   // Tasten uebergeben
   canaldata.digi = DebouncedState;
+  if (lastDebouncedState != DebouncedState)
+  {
+    Serial.print("DebouncedState: ");
+    Serial.println(DebouncedState);
+    lastDebouncedState = DebouncedState;
+  }
 
     Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
 
@@ -267,7 +319,7 @@ int rawly = adc1_get_raw(ADC1_CHANNEL_3);
     //Serial.print(canaldata.lx);
     //Serial.print(" ");
     //Serial.println(canaldata.ly);
-    esp_err_t result = esp_now_send(0, (uint8_t *) &canaldata, sizeof(canaldata));
+    esp_err_t result = esp_now_send(broadcastAddress1, (uint8_t *) &canaldata, sizeof(canal_struct));
     //Serial.print("result: ");
     //Serial.println(result);
    
