@@ -2,6 +2,10 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"name": "lolin-test",
+			"path": "../../../../../../PlatformIO/Projects/lolin-test"
 		}
 	],
 	"settings": {
