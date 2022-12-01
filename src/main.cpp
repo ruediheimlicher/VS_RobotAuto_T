@@ -20,22 +20,30 @@
 
 #define ESPOK 0
 
-#define SENDINTERVALL 20
+#define SENDINTERVALL 50
 
 // REPLACE WITH YOUR ESP RECEIVER'S MAC ADDRESS
-uint8_t broadcastAddress1[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
-uint8_t broadcastAddress2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-//uint8_t broadcastAddress2[] = {0xBC, 0xAA, 0xB5, 0x7B, 0xA3, 0x28}; // ESP8266 D1 MINI
+//uint8_t broadcastAddress1[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
+uint8_t broadcastAddress1[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t broadcastAddress2[] = {0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28}; // ESP8266 D1 MINI
 
+//uint8_t broadcastAddress2[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
 uint8_t broadcastAddress3[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 #define NUM_SERVOS 4
 
-#define MAX_TICKS 3400
-#define MIN_TICKS 1700
+#define MAX_TICKS 2010
+#define MIN_TICKS 990
+
+#define MAX_ADC 3500
+#define MIN_ADC 700
+
 uint16_t   servomittearray[NUM_SERVOS] = {}; // Werte fuer Mitte
 
 uint16_t maxwinkel = 180;
+
+#define KANAL_X 0
+#define KANAL_Y 1
 
 uint8_t buttonstatus = 0;
 uint8_t tonindex = 0;
@@ -60,6 +68,10 @@ uint8_t DebouncedState;
 uint8_t lastDebouncedState;
 uint8_t debouncestatus;
 
+#define AVERAGE 8
+uint8_t averagecounter = 0;
+uint16_t lxmittelwertarray[AVERAGE];
+uint16_t lymittelwertarray[AVERAGE];
 
 uint8_t State[MAX_CHECKS];
 uint8_t Index = 0;
@@ -71,10 +83,14 @@ taste3: GPIO5
 
 */
 
+#define BOARD_TASTE 33
+#define BOARD_MINI 1
+#define BOARD_NODE 0
+volatile uint8_t boardstatus = 0;
+
+uint8_t firstrun = 1;
+
 #define TASTE0 14
-//#define TASTE1 15
-//#define TASTE2 16
-//#define TASTE3 17
 #define TASTE1 27
 #define TASTE2 26
 #define TASTE3 25
@@ -109,8 +125,6 @@ uint8_t tastencounter = 0;
 
  }
  
-
-
 void DebounceSwitch3 (void)
 {
   uint8_t i,j;
@@ -129,6 +143,9 @@ void DebounceSwitch3 (void)
 
 }
 
+
+
+
 typedef struct canal_struct 
 {
   uint8_t lx;
@@ -136,7 +153,7 @@ typedef struct canal_struct
   uint8_t rx;
   uint8_t ry;
 
- uint8_t digi;
+  uint8_t digi;
 
   uint8_t x;
   uint8_t y;
@@ -152,16 +169,46 @@ uint8_t loopstatus = 0;
 
 esp_now_peer_info_t peerInfo;
 
+
+void deletePeer() {
+	//const esp_now_peer_info_t *peer = &slave;
+	//const uint8_t *peer_addr = slave.peer_addr;
+ uint8_t *peer_addr = peerInfo.peer_addr;
+	esp_err_t delStatus = esp_now_del_peer(peer_addr);
+	Serial.print("Slave Delete Status: ");
+	if (delStatus == ESP_OK) {
+		// Delete success
+		Serial.println("Success");
+	}
+	else if (delStatus == ESP_ERR_ESPNOW_NOT_INIT) {
+		// How did we get so far!!
+		Serial.println("ESPNOW Not Init");
+	}
+	else if (delStatus == ESP_ERR_ESPNOW_ARG) {
+		Serial.println("Invalid Argument");
+	}
+	else if (delStatus == ESP_ERR_ESPNOW_NOT_FOUND) {
+		Serial.println("Peer not found.");
+	}
+	else {
+		Serial.println("Not sure what happened");
+	}
+}
+
+
+
+
 // callback when data is sent
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) 
+{
   char macStr[18];
-  //Serial.print("Packet to: ");
+ // Serial.print("Packet to: ");
   // Copies the sender mac address to a string
-  snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
-           mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-  //Serial.print(macStr);
-  //Serial.print(" send status:\t");
-  //Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+ // snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
+ //          mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+ // Serial.print(macStr);
+ // Serial.print(" send status:\t");
+ // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
 
 uint16_t tickslimited(uint16_t inticks)
@@ -181,30 +228,88 @@ uint16_t servoticks(uint16_t inticks)
 {
   uint16_t expovalue = 0;
   inticks = map(inticks,MIN_TICKS,MAX_TICKS, 0,maxwinkel);
+  return inticks;
+/*
   if (inticks > maxwinkel/2)
   {
      expovalue = maxwinkel/2 +  expoarray[expolevel][inticks - maxwinkel/2];
   }
   else
   {
-     expovalue = maxwinkel/2 -  expoarray[expolevel][maxwinkel/2 - inticks ];
+     expovalue = maxwinkel/2 -  expoarray[expolevel][maxwinkel/2 - inticks ]; 
   }
  return expovalue;
+ */
 }
+
+uint16_t mapADC(uint16_t inADC)
+{
+  uint16_t raw_in = inADC;
+  if(raw_in > MAX_ADC)
+  {
+    raw_in = MAX_ADC;
+  }
+  if(raw_in < MIN_ADC)
+  {
+    raw_in = MIN_ADC;
+  }
+  return map(raw_in, MIN_ADC, MAX_ADC, MIN_TICKS, MAX_TICKS);
+}
+
+void fixServoMitte()
+{
+  uint16_t firstlxmittel = 0;
+  uint16_t firstlymittel = 0;
+  for (uint8_t i=0;i<AVERAGE;i++)
+  {
+    uint16_t rawlx = adc1_get_raw(ADC1_CHANNEL_0);
+    firstlxmittel += rawlx;
+  //Serial.printf("i: %d wert: %d\n",i,rawlx, firstlxmittel);
+    uint16_t rawly = adc1_get_raw(ADC1_CHANNEL_3);
+    firstlymittel += rawly;
+ 
+  
+  }
+  Serial.printf("firstlxmittel: %d \n",firstlxmittel);
+  firstlxmittel /= AVERAGE;
+  firstlymittel /= AVERAGE;
+ // Grenzwerte einhalten
+
+//uint16_t lx = mapADC(firstlxmittel);
+//Serial.printf("fixServoMitte firstlxmittel: %d  lx: %d\n", firstlxmittel,lx);
+servomittearray[KANAL_X] =  mapADC(firstlxmittel);
+uint16_t ly = mapADC(firstlymittel);
+servomittearray[KANAL_Y] = mapADC(firstlymittel);
+//Serial.printf("fixServoMitte X: %d \n", servomittearray[KANAL_X]);
+//Serial.printf("fixServoMitte Y: %d \n", servomittearray[KANAL_Y]);
+}
+
+void boardchange()
+{
+  Serial.print("boardchange");
+}
+
 
  
 void setup() {
-  Serial.begin(74880);
+  Serial.begin(115200);
 
+for(int i=0;i<NUM_SERVOS;i++)
+{
+  servomittearray[i]= (MAX_TICKS + MIN_TICKS)/2;
+}
+  pinMode(BOARD_TASTE, INPUT_PULLUP);
+  //attachInterrupt(BOARD_TASTE, boardchange,FALLING);
   pinMode(TASTE0,INPUT_PULLUP);
   pinMode(TASTE1,INPUT_PULLUP);
   pinMode(TASTE2,INPUT_PULLUP);
   pinMode(TASTE3,INPUT_PULLUP);
 
-pinMode(LED_BUILTIN, OUTPUT); 
+  pinMode(LED_BUILTIN, OUTPUT); 
   WiFi.mode(WIFI_STA);
  
-  if (esp_now_init() != ESP_OK) {
+  if (esp_now_init() != ESP_OK) 
+  {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
@@ -215,14 +320,18 @@ pinMode(LED_BUILTIN, OUTPUT);
   esp_err_t registererr = esp_now_register_send_cb(OnDataSent);
   Serial.printf("registererr: %d\n",registererr);
 
-
+ if (digitalRead(BOARD_TASTE) == 0)
+    {
+      Serial.println("boardchange setup");
+    }
    
   // register peer
   peerInfo.channel = 0;  
   peerInfo.encrypt = false;
   // register first peer  
   memcpy(peerInfo.peer_addr, broadcastAddress1, 6);
-  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+  if (esp_now_add_peer(&peerInfo) != ESP_OK)
+  {
     Serial.println("Failed to add peer 1");
     return;
   }
@@ -237,17 +346,25 @@ pinMode(LED_BUILTIN, OUTPUT);
     Serial.println("Failed to add peer");
     return;
   }
+  else
+  {
+    Serial.println("add peer 2 OK");
+  }
   /// register third peer
   memcpy(peerInfo.peer_addr, broadcastAddress3, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
     Serial.println("Failed to add peer");
     return;
   }
-   //pinMode(5,INPUT);
-   //pinMode(8,INPUT);
+  else
+  {
+    Serial.println("add peer 3 OK");
+  }
+     
    adc1_config_width(ADC_WIDTH_BIT_12);
-   adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_0);
-   adc1_config_channel_atten(ADC1_CHANNEL_3,ADC_ATTEN_DB_0);
+   adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_11);
+   adc1_config_channel_atten(ADC1_CHANNEL_3,ADC_ATTEN_DB_11);
+
 //   adc1_config_channel_atten(ADC1_CHANNEL_6,ADC_ATTEN_DB_0);
 //   adc1_config_channel_atten(ADC1_CHANNEL_7,ADC_ATTEN_DB_0);
 
@@ -258,12 +375,23 @@ pinMode(LED_BUILTIN, OUTPUT);
 void loop() 
 {
 
+if (firstrun)
+{
+  fixServoMitte();
+  firstrun = 0;
+}
 if (ledmillis > ledintervall)
   {
     ledmillis = 0;
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     //Serial.printf("DebouncedState: %d\n",DebouncedState);
-    Serial.println("led");
+    //Serial.println("led")
+    //Serial.println(canaldata.lx);
+    //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
+    if (digitalRead(BOARD_TASTE) == 0)
+    {
+      Serial.println("boardchange");
+    }
   }
 
  if (debouncemillis > 5)
@@ -291,18 +419,94 @@ if (DebouncedState & 0x04)
 
 
 
-int rawlx = adc1_get_raw(ADC1_CHANNEL_0);
-uint16_t lx = tickslimited(rawlx);
- // ticks umrechnen
-uint16_t outvalue_lx = servoticks(lx);
-canaldata.lx = outvalue_lx;
+uint16_t rawlx = adc1_get_raw(ADC1_CHANNEL_0);
+lxmittelwertarray[(averagecounter & 0x07)] = rawlx;
+uint16_t lxmittel = 0;
+for (int i=0;i < AVERAGE;i++)
+{
+  lxmittel += lxmittelwertarray[i];
+}
+ lxmittel /= AVERAGE;
 
-int rawly = adc1_get_raw(ADC1_CHANNEL_3);
- // Tickbereich einhalten
- uint16_t ly = tickslimited(rawly);
-  // ticks umrechnen
-  uint16_t outvalue_ly = servoticks(ly);
-  canaldata.ly = outvalue_ly;
+ // Grenzwerte einhalten
+//uint16_t lx = tickslimited(lxmittel);
+uint16_t lx = mapADC(lxmittel);
+uint16_t kanalwertx = lx;
+//Serial.printf("rawlx: %d kanalwertx: %d \n",rawlx,kanalwertx); 
+
+
+uint16_t rawly = adc1_get_raw(ADC1_CHANNEL_3);
+lymittelwertarray[(averagecounter & 0x07)] = rawly;
+uint16_t lymittel = 0;
+for (int i=0;i < AVERAGE;i++)
+{
+  lymittel += lymittelwertarray[i];
+}
+lymittel /= AVERAGE;
+
+averagecounter++;
+
+ // Grenzwerte einhalten
+//uint16_t ly = tickslimited(lymittel); // Grenzen einhalten, MAX_TICKS, MIN_TICKS
+uint16_t ly = mapADC(lymittel);
+uint16_t kanalwerty = ly; // Werte von ADC
+
+
+
+ // MIX, von RC_22_32
+ uint16_t mixkanalwertx = 0;
+ uint16_t mixkanalwerty = 0;
+uint16_t mittex = servomittearray[KANAL_X];
+uint16_t mittey = servomittearray[KANAL_Y];
+
+  //Serial.printf("lxm: %d kan x: %d mx: %d\t",lxmittel, kanalwertx,  mittex); 
+  //Serial.printf("lym: %d l kan y: %d my: %d\t",lymittel, kanalwerty,  mittey); 
+
+  uint16_t diffx = 0;
+  if(kanalwertx > mittex)
+  {
+     diffx = kanalwertx - mittex;
+    //Serial.printf(" > mx dx: %d\t",diffx);
+     mixkanalwertx = mittex + diffx;
+     mixkanalwerty = mittey + diffx;
+  }
+  else 
+  {
+     diffx = mittex - kanalwertx;
+     //Serial.printf(" < mx dx: %d\t",diffx);
+     mixkanalwertx = mittex - diffx;
+     mixkanalwerty = mittey - diffx;   
+  }
+
+  uint16_t diffy = 0;
+  if(kanalwerty > mittey)
+  {
+     diffy = kanalwerty - mittey;
+     //Serial.printf(" > my dy: %d\t",diffy);
+     mixkanalwertx += diffy;
+     mixkanalwerty -= diffy;
+  }
+  else 
+  {
+     diffy = mittey - kanalwerty;
+     //Serial.printf(" < my dy: %d\7",diffy);
+     mixkanalwertx -= diffy;
+     mixkanalwerty += diffy;   
+  }
+  mixkanalwertx = servoticks(mixkanalwertx);
+mixkanalwerty = servoticks(mixkanalwerty);
+ //Serial.printf("mixkanalwertx: %d  mixkanalwerty: %d \t",mixkanalwertx, mixkanalwerty); 
+
+// ticks umrechnen von MAX_TICKS, MIN_TICKS auf maxwinkel
+uint16_t outvalue_lx = servoticks(kanalwertx);
+
+canaldata.lx = outvalue_lx;
+canaldata.lx = mixkanalwertx;
+// ticks umrechnen
+uint16_t outvalue_ly = servoticks(kanalwerty);
+canaldata.ly = outvalue_ly;
+canaldata.ly = mixkanalwerty;
+Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
 
   // Tasten uebergeben
   canaldata.digi = DebouncedState;
@@ -312,18 +516,19 @@ int rawly = adc1_get_raw(ADC1_CHANNEL_3);
     Serial.println(DebouncedState);
     lastDebouncedState = DebouncedState;
   }
-
-    Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
+       // Serial.printf("%d \t%d \t%d \t**  \t%d\t%d  \t%d\n", rawlx , lx, canaldata.lx , rawly , ly, canaldata.ly);
+    //Serial.printf("%d\t%d  \t%d m: %d\n",  rawly , ly, canaldata.ly, lymittel);
+    // Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
 
     sendtimer = 0;
     //Serial.print(canaldata.lx);
     //Serial.print(" ");
     //Serial.println(canaldata.ly);
-    esp_err_t result = esp_now_send(broadcastAddress1, (uint8_t *) &canaldata, sizeof(canal_struct));
+    esp_err_t result = esp_now_send(0, (uint8_t *) &canaldata, sizeof(canal_struct));
     //Serial.print("result: ");
     //Serial.println(result);
    
   }
 
- // delay(50);
+ 
 }
