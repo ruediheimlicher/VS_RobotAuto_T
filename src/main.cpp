@@ -51,7 +51,7 @@ void playTon(int ton);
 #define START_TON 0
 #define LICHT_ON 1
 
-uint8_t expolevel = 0;
+uint8_t expolevel[NUM_SERVOS] = {1,0,0,0};
 
 uint16_t ubatt = 0;
 
@@ -148,15 +148,15 @@ void DebounceSwitch3 (void)
 
 typedef struct canal_struct 
 {
-  uint8_t lx;
-  uint8_t ly;
-  uint8_t rx;
-  uint8_t ry;
+  uint16_t lx;
+  uint16_t ly;
+  uint16_t rx;
+  uint16_t ry;
 
   uint8_t digi;
 
-  uint8_t x;
-  uint8_t y;
+  uint16_t x;
+  uint16_t y;
 } canal_struct;
 
 //Create a struct_message called canaldata
@@ -242,6 +242,8 @@ uint16_t servoticks(uint16_t inticks)
  */
 }
 
+
+
 uint16_t mapADC(uint16_t inADC)
 {
   uint16_t raw_in = inADC;
@@ -254,6 +256,33 @@ uint16_t mapADC(uint16_t inADC)
     raw_in = MIN_ADC;
   }
   return map(raw_in, MIN_ADC, MAX_ADC, MIN_TICKS, MAX_TICKS);
+}
+
+uint16_t expovalue(uint8_t pin, uint8_t expolevel, uint16_t invalue)
+{
+  uint16_t expowert= 0;
+  uint16_t servomitte = servomittearray[pin];
+  uint16_t expopos = 0;
+  if (invalue > servomitte) 
+  {
+    expopos = invalue - servomitte;
+    if(expopos > 0x200)
+    {
+      expopos = 0x200;
+    }
+    expowert =  servomitte + expoarray512[expolevel][expopos];
+  }
+  else
+  { 
+    expopos = servomitte - invalue;
+     if(expopos > 0x200)
+    {
+      expopos = 0x200;
+    }
+    expowert =  servomitte - expoarray512[expolevel][expopos];
+  }
+  Serial.printf("expopos: %d\t",expopos);
+  return expowert;
 }
 
 void fixServoMitte()
@@ -275,7 +304,7 @@ void fixServoMitte()
   firstlymittel /= AVERAGE;
  // Grenzwerte einhalten
 
-//uint16_t lx = mapADC(firstlxmittel);
+uint16_t lx = mapADC(firstlxmittel);
 //Serial.printf("fixServoMitte firstlxmittel: %d  lx: %d\n", firstlxmittel,lx);
 servomittearray[KANAL_X] =  mapADC(firstlxmittel);
 uint16_t ly = mapADC(firstlymittel);
@@ -417,8 +446,6 @@ if (DebouncedState & 0x04)
       }
     }
 
-
-
 uint16_t rawlx = adc1_get_raw(ADC1_CHANNEL_0);
 lxmittelwertarray[(averagecounter & 0x07)] = rawlx;
 uint16_t lxmittel = 0;
@@ -448,65 +475,82 @@ averagecounter++;
 
  // Grenzwerte einhalten
 //uint16_t ly = tickslimited(lymittel); // Grenzen einhalten, MAX_TICKS, MIN_TICKS
+
+
 uint16_t ly = mapADC(lymittel);
 uint16_t kanalwerty = ly; // Werte von ADC
 
+uint16_t expokanalwertx = expovalue(KANAL_X,expolevel[KANAL_X],kanalwertx);
+kanalwertx = expokanalwertx;
+Serial.printf("kanalwertx: %d expokanalwertx: %d\t\t",kanalwertx,expokanalwertx);
 
+uint16_t expokanalwerty = expovalue(KANAL_Y,expolevel[KANAL_Y],kanalwerty);
+kanalwerty = expokanalwerty;
+
+Serial.printf("kanalwerty: %d expokanalwerty: %d\n",kanalwerty,expokanalwerty);
+
+
+canaldata.lx = kanalwertx;
+canaldata.ly = kanalwerty;
 
  // MIX, von RC_22_32
+
  uint16_t mixkanalwertx = 0;
  uint16_t mixkanalwerty = 0;
 uint16_t mittex = servomittearray[KANAL_X];
 uint16_t mittey = servomittearray[KANAL_Y];
 
   //Serial.printf("lxm: %d kan x: %d mx: %d\t",lxmittel, kanalwertx,  mittex); 
-  //Serial.printf("lym: %d l kan y: %d my: %d\t",lymittel, kanalwerty,  mittey); 
+ // Serial.printf("\tlym: %d l kan y: %d my: %d\n",lymittel, kanalwerty,  mittey); 
 
-  uint16_t diffx = 0;
+  uint16_t diffx = 0; // Tempo
   if(kanalwertx > mittex)
   {
+
      diffx = kanalwertx - mittex;
-    //Serial.printf(" > mx dx: %d\t",diffx);
+    //Serial.printf(" > mx dx: +%d\t",diffx);
      mixkanalwertx = mittex + diffx;
      mixkanalwerty = mittey + diffx;
   }
   else 
   {
      diffx = mittex - kanalwertx;
-     //Serial.printf(" < mx dx: %d\t",diffx);
+     //Serial.printf(" < mx dx: -%d\t",diffx);
      mixkanalwertx = mittex - diffx;
      mixkanalwerty = mittey - diffx;   
   }
 
   uint16_t diffy = 0;
-  if(kanalwerty > mittey)
+  if(kanalwerty > mittey) // Richtung
   {
      diffy = kanalwerty - mittey;
-     //Serial.printf(" > my dy: %d\t",diffy);
+     //Serial.printf(" > my dy: +%d\t",diffy);
      mixkanalwertx += diffy;
      mixkanalwerty -= diffy;
   }
   else 
   {
      diffy = mittey - kanalwerty;
-     //Serial.printf(" < my dy: %d\7",diffy);
+     //Serial.printf(" < my dy: -%d\t",diffy);
      mixkanalwertx -= diffy;
      mixkanalwerty += diffy;   
   }
-  mixkanalwertx = servoticks(mixkanalwertx);
-mixkanalwerty = servoticks(mixkanalwerty);
- //Serial.printf("mixkanalwertx: %d  mixkanalwerty: %d \t",mixkanalwertx, mixkanalwerty); 
+//mixkanalwertx = servoticks(mixkanalwertx);
+//mixkanalwerty = servoticks(mixkanalwerty);
+ Serial.printf("mixkanalwertx: %d  mixkanalwerty: %d \t",mixkanalwertx, mixkanalwerty); 
 
 // ticks umrechnen von MAX_TICKS, MIN_TICKS auf maxwinkel
 uint16_t outvalue_lx = servoticks(kanalwertx);
 
-canaldata.lx = outvalue_lx;
+//canaldata.lx = outvalue_lx;
 canaldata.lx = mixkanalwertx;
 // ticks umrechnen
 uint16_t outvalue_ly = servoticks(kanalwerty);
-canaldata.ly = outvalue_ly;
+//canaldata.ly = outvalue_ly;
+
 canaldata.ly = mixkanalwerty;
-Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
+
+//Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
 
   // Tasten uebergeben
   canaldata.digi = DebouncedState;
@@ -516,9 +560,9 @@ Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly);
     Serial.println(DebouncedState);
     lastDebouncedState = DebouncedState;
   }
-       // Serial.printf("%d \t%d \t%d \t**  \t%d\t%d  \t%d\n", rawlx , lx, canaldata.lx , rawly , ly, canaldata.ly);
+  //Serial.printf("%d \t%d \t%d \t**  \t%d\t%d  \t%d\n", rawlx , lx, canaldata.lx , rawly , ly, canaldata.ly);
     //Serial.printf("%d\t%d  \t%d m: %d\n",  rawly , ly, canaldata.ly, lymittel);
-    // Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
+  //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
 
     sendtimer = 0;
     //Serial.print(canaldata.lx);
