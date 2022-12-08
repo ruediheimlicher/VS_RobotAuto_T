@@ -25,18 +25,26 @@
 // REPLACE WITH YOUR ESP RECEIVER'S MAC ADDRESS
 //uint8_t broadcastAddress1[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
 uint8_t broadcastAddress1[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t broadcastAddress2[] = {0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28}; // ESP8266 D1 MINI
+//uint8_t broadcastAddress2[] = {0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28}; // ESP8266 D1 MINI
 
 //uint8_t broadcastAddress2[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
+//uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F}; // MINI_PRO 1
+uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17};
 uint8_t broadcastAddress3[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 
 #define NUM_SERVOS 4
 
 #define MAX_TICKS 2010
 #define MIN_TICKS 990
 
-#define MAX_ADC 3500
-#define MIN_ADC 700
+// Graupner:
+//#define MAX_ADC 3500
+//#define MIN_ADC 700
+
+#define MAX_ADC 3000
+#define MIN_ADC 800
 
 uint16_t   servomittearray[NUM_SERVOS] = {}; // Werte fuer Mitte
 
@@ -51,11 +59,11 @@ void playTon(int ton);
 #define START_TON 0
 #define LICHT_ON 1
 
-uint8_t expolevel[NUM_SERVOS] = {1,0,0,0};
+uint8_t expolevel[NUM_SERVOS] = {3,3,0,0};
 
 uint16_t ubatt = 0;
 
-int ledintervall = 1000;
+int ledintervall = 5000;
 Ticker timer;
 elapsedMillis ledmillis;
 
@@ -73,6 +81,8 @@ uint8_t averagecounter = 0;
 uint16_t lxmittelwertarray[AVERAGE];
 uint16_t lymittelwertarray[AVERAGE];
 
+uint8_t propfaktorx = 0.5;
+uint8_t propfaktory = 0.5;
 uint8_t State[MAX_CHECKS];
 uint8_t Index = 0;
 /*
@@ -261,7 +271,9 @@ uint16_t mapADC(uint16_t inADC)
 uint16_t expovalue(uint8_t pin, uint8_t expolevel, uint16_t invalue)
 {
   uint16_t expowert= 0;
-  uint16_t servomitte = servomittearray[pin];
+  
+  uint16_t servomitte = mapADC(servomittearray[pin]);
+  //Serial.printf("fixServoMitte pin: %d : %d servomitte: %d\n", pin, servomittearray[pin], servomitte);
   uint16_t expopos = 0;
   if (invalue > servomitte) 
   {
@@ -270,7 +282,7 @@ uint16_t expovalue(uint8_t pin, uint8_t expolevel, uint16_t invalue)
     {
       expopos = 0x200;
     }
-    expowert =  servomitte + expoarray512[expolevel][expopos];
+    expowert =  servomitte + propfaktorx * (expoarray512[expolevel][expopos]);
   }
   else
   { 
@@ -279,9 +291,9 @@ uint16_t expovalue(uint8_t pin, uint8_t expolevel, uint16_t invalue)
     {
       expopos = 0x200;
     }
-    expowert =  servomitte - expoarray512[expolevel][expopos];
+    expowert =  servomitte - propfaktorx * expoarray512[expolevel][expopos];
   }
-  Serial.printf("expopos: %d\t",expopos);
+  Serial.printf(" expopos: %d\t",expopos);
   return expowert;
 }
 
@@ -299,19 +311,24 @@ void fixServoMitte()
  
   
   }
-  Serial.printf("firstlxmittel: %d \n",firstlxmittel);
+  //Serial.printf("firstlxmittel: %d \n",firstlxmittel);
   firstlxmittel /= AVERAGE;
   firstlymittel /= AVERAGE;
  // Grenzwerte einhalten
 
 uint16_t lx = mapADC(firstlxmittel);
 //Serial.printf("fixServoMitte firstlxmittel: %d  lx: %d\n", firstlxmittel,lx);
-servomittearray[KANAL_X] =  mapADC(firstlxmittel);
+//servomittearray[KANAL_X] =  mapADC(firstlxmittel);
+servomittearray[KANAL_X] =  (firstlxmittel);
+
 uint16_t ly = mapADC(firstlymittel);
-servomittearray[KANAL_Y] = mapADC(firstlymittel);
+//servomittearray[KANAL_Y] = mapADC(firstlymittel);
+servomittearray[KANAL_Y] = (firstlymittel);
+
 //Serial.printf("fixServoMitte X: %d \n", servomittearray[KANAL_X]);
 //Serial.printf("fixServoMitte Y: %d \n", servomittearray[KANAL_Y]);
 }
+
 
 void boardchange()
 {
@@ -414,7 +431,7 @@ if (ledmillis > ledintervall)
     ledmillis = 0;
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     //Serial.printf("DebouncedState: %d\n",DebouncedState);
-    //Serial.println("led")
+    //Serial.println("led");
     //Serial.println(canaldata.lx);
     //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
     if (digitalRead(BOARD_TASTE) == 0)
@@ -476,18 +493,27 @@ averagecounter++;
  // Grenzwerte einhalten
 //uint16_t ly = tickslimited(lymittel); // Grenzen einhalten, MAX_TICKS, MIN_TICKS
 
+uint16_t mittex = servomittearray[KANAL_X];
+mittex = mapADC(mittex);
+
+uint16_t mittey = servomittearray[KANAL_Y];
+mittey = mapADC(mittey);
+
 
 uint16_t ly = mapADC(lymittel);
+
+//Serial.printf("lxmittel: %d lx: %d mittex: %d  lymittel: %d ly: %d mittey: %d\n",lxmittel, lx, mittex,lymittel, ly, mittey); 
+
 uint16_t kanalwerty = ly; // Werte von ADC
 
 uint16_t expokanalwertx = expovalue(KANAL_X,expolevel[KANAL_X],kanalwertx);
-kanalwertx = expokanalwertx;
+//kanalwertx = expokanalwertx;
 Serial.printf("kanalwertx: %d expokanalwertx: %d\t\t",kanalwertx,expokanalwertx);
 
 uint16_t expokanalwerty = expovalue(KANAL_Y,expolevel[KANAL_Y],kanalwerty);
-kanalwerty = expokanalwerty;
+//kanalwerty = expokanalwerty;
 
-Serial.printf("kanalwerty: %d expokanalwerty: %d\n",kanalwerty,expokanalwerty);
+Serial.printf(" kan werty: %d expokanalwerty: %d\n",kanalwerty,expokanalwerty);
 
 
 canaldata.lx = kanalwertx;
@@ -497,13 +523,35 @@ canaldata.ly = kanalwerty;
 
  uint16_t mixkanalwertx = 0;
  uint16_t mixkanalwerty = 0;
-uint16_t mittex = servomittearray[KANAL_X];
-uint16_t mittey = servomittearray[KANAL_Y];
+
 
   //Serial.printf("lxm: %d kan x: %d mx: %d\t",lxmittel, kanalwertx,  mittex); 
  // Serial.printf("\tlym: %d l kan y: %d my: %d\n",lymittel, kanalwerty,  mittey); 
 
-  uint16_t diffx = 0; // Tempo
+uint16_t diffx = 0;
+uint16_t diffy = 0;
+float floatdiffx = 0.0; // Tempo
+float floatdiffy = 0.0;
+float korrfaktor = 1;
+floatdiffx = kanalwertx - mittex;
+floatdiffy = kanalwerty - mittey;
+float diffsumme = abs(floatdiffx) + abs(floatdiffy);
+if (diffsumme > 512)
+{
+  korrfaktor = 512/diffsumme;
+}
+floatdiffx *= korrfaktor;
+floatdiffy *= korrfaktor;
+
+float floatkanalwertx =  mittex + floatdiffx + floatdiffy;
+float floatkanalwerty =  mittey + floatdiffx - floatdiffy;
+
+//Serial.printf("f dx: %0.2f l f dy: %0.2f d summ: %0.2f korr: %0.4f floatkanalwertx: %0.2f floatkanalwerty: %0.2f\n",floatdiffx, floatdiffy,  diffsumme, korrfaktor, floatkanalwertx, floatkanalwerty); 
+
+
+
+
+/*
   if(kanalwertx > mittex)
   {
 
@@ -520,7 +568,8 @@ uint16_t mittey = servomittearray[KANAL_Y];
      mixkanalwerty = mittey - diffx;   
   }
 
-  uint16_t diffy = 0;
+  
+
   if(kanalwerty > mittey) // Richtung
   {
      diffy = kanalwerty - mittey;
@@ -535,20 +584,37 @@ uint16_t mittey = servomittearray[KANAL_Y];
      mixkanalwertx -= diffy;
      mixkanalwerty += diffy;   
   }
+*/
 //mixkanalwertx = servoticks(mixkanalwertx);
 //mixkanalwerty = servoticks(mixkanalwerty);
- Serial.printf("mixkanalwertx: %d  mixkanalwerty: %d \t",mixkanalwertx, mixkanalwerty); 
+ //Serial.printf("mixkanalwertx: %d  mixkanalwerty: %d \t",mixkanalwertx, mixkanalwerty); 
 
 // ticks umrechnen von MAX_TICKS, MIN_TICKS auf maxwinkel
 uint16_t outvalue_lx = servoticks(kanalwertx);
 
 //canaldata.lx = outvalue_lx;
-canaldata.lx = mixkanalwertx;
+//canaldata.lx = mixkanalwertx;
+
+canaldata.lx = uint16_t(floatkanalwertx);
+
+//canaldata.x = map(uint16_t(floatkanalwertx),MIN_TICKS,MAX_TICKS,0,180);
+canaldata.x = map(uint16_t(floatkanalwertx),mittex - 0x200,mittex + 0x200,0,180);
+
+//canaldata.x = map(uint16_t(kanalwertx),MIN_TICKS,MAX_TICKS,0,180);
+
 // ticks umrechnen
 uint16_t outvalue_ly = servoticks(kanalwerty);
-//canaldata.ly = outvalue_ly;
 
-canaldata.ly = mixkanalwerty;
+//canaldata.y = map(uint16_t(floatkanalwerty),MIN_TICKS,MAX_TICKS,0,180);
+canaldata.y = map(uint16_t(floatkanalwerty),mittey - 0x200,mittey + 0x200,0,180);
+
+//canaldata.y = map(uint16_t(kanalwerty),MIN_TICKS,MAX_TICKS,0,180);
+
+
+//canaldata.ly = outvalue_ly;
+//Serial.printf("data.x: %d data.y: %d \n",canaldata.x, canaldata.y); 
+//canaldata.ly = mixkanalwerty;
+canaldata.ly = uint16_t(floatkanalwerty);
 
 //Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
 
@@ -562,7 +628,7 @@ canaldata.ly = mixkanalwerty;
   }
   //Serial.printf("%d \t%d \t%d \t**  \t%d\t%d  \t%d\n", rawlx , lx, canaldata.lx , rawly , ly, canaldata.ly);
     //Serial.printf("%d\t%d  \t%d m: %d\n",  rawly , ly, canaldata.ly, lymittel);
-  //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
+  //Serial.printf("x: %d \ty: %d \n", canaldata.x , canaldata.y);
 
     sendtimer = 0;
     //Serial.print(canaldata.lx);
