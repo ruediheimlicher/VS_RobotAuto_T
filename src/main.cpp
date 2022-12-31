@@ -20,7 +20,7 @@
 
 #define ESPOK 0
 
-#define SENDINTERVALL 50
+#define SENDINTERVALL 20
 
 // REPLACE WITH YOUR ESP RECEIVER'S MAC ADDRESS
 //uint8_t broadcastAddress1[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
@@ -36,16 +36,17 @@ uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x8
 
 #define NUM_SERVOS 4
 
-#define MAX_TICKS 2010
-#define MIN_TICKS 990
+#define MAX_TICKS 2010 // Maxwert ms fur Impulslaenge
+#define MIN_TICKS 990  // Minwert ms fuer Impulslaenge
 
 // Graupner:
 //#define MAX_ADC 3500
 //#define MIN_ADC 700
 
-#define MAX_ADC 3000
-#define MIN_ADC 800
+#define MAX_ADC 4050 // Max wert vom ADC
+#define MIN_ADC 1250 // Min wert vom ADC
 
+#define NULLBAND 30 // nichts tun bei kleineren Kanalwerten
 uint16_t   servomittearray[NUM_SERVOS] = {}; // Werte fuer Mitte
 
 uint16_t maxwinkel = 180;
@@ -59,11 +60,11 @@ void playTon(int ton);
 #define START_TON 0
 #define LICHT_ON 1
 
-uint8_t expolevel[NUM_SERVOS] = {3,3,0,0};
+uint8_t expolevelarray[NUM_SERVOS] = {1,1,0,0}; // expo-levels pro kanal
 
 uint16_t ubatt = 0;
 
-int ledintervall = 5000;
+int ledintervall = 800;
 Ticker timer;
 elapsedMillis ledmillis;
 
@@ -81,8 +82,8 @@ uint8_t averagecounter = 0;
 uint16_t lxmittelwertarray[AVERAGE];
 uint16_t lymittelwertarray[AVERAGE];
 
-uint8_t propfaktorx = 0.5;
-uint8_t propfaktory = 0.5;
+uint8_t propfaktorx = 1.0;
+uint8_t propfaktory = 1.0;
 uint8_t State[MAX_CHECKS];
 uint8_t Index = 0;
 /*
@@ -135,7 +136,7 @@ uint8_t tastencounter = 0;
 
  }
  
-void DebounceSwitch3 (void)
+void DebounceSwitch (void)
 {
   uint8_t i,j;
   State[Index] = tastenstatus(); // aktuellen status laden
@@ -242,11 +243,11 @@ uint16_t servoticks(uint16_t inticks)
 /*
   if (inticks > maxwinkel/2)
   {
-     expovalue = maxwinkel/2 +  expoarray[expolevel][inticks - maxwinkel/2];
+     expovalue = maxwinkel/2 +  expoarray[expolevelarray][inticks - maxwinkel/2];
   }
   else
   {
-     expovalue = maxwinkel/2 -  expoarray[expolevel][maxwinkel/2 - inticks ]; 
+     expovalue = maxwinkel/2 -  expoarray[expolevelarray][maxwinkel/2 - inticks ]; 
   }
  return expovalue;
  */
@@ -293,7 +294,7 @@ uint16_t expovalue(uint8_t pin, uint8_t expolevel, uint16_t invalue)
     }
     expowert =  servomitte - propfaktorx * expoarray512[expolevel][expopos];
   }
-  Serial.printf(" expopos: %d\t",expopos);
+  //Serial.printf(" expopos: %d\t",expopos);
   return expowert;
 }
 
@@ -359,9 +360,7 @@ for(int i=0;i<NUM_SERVOS;i++)
     Serial.println("Error initializing ESP-NOW");
     return;
   }
-  pinMode(TASTE0,INPUT_PULLUP);
-  pinMode(TASTE1,INPUT_PULLUP);
-  
+   
   //esp_now_register_send_cb(OnDataSent);
   esp_err_t registererr = esp_now_register_send_cb(OnDataSent);
   Serial.printf("registererr: %d\n",registererr);
@@ -444,8 +443,7 @@ if (ledmillis > ledintervall)
   {
 
     debouncemillis = 0;
-    DebounceSwitch3();
-  
+    DebounceSwitch();
 
   }
   
@@ -476,7 +474,7 @@ for (int i=0;i < AVERAGE;i++)
 //uint16_t lx = tickslimited(lxmittel);
 uint16_t lx = mapADC(lxmittel);
 uint16_t kanalwertx = lx;
-//Serial.printf("rawlx: %d kanalwertx: %d \n",rawlx,kanalwertx); 
+//Serial.printf("lxmittel: %d kanalwertx: %d \n",lxmittel,kanalwertx); 
 
 
 uint16_t rawly = adc1_get_raw(ADC1_CHANNEL_3);
@@ -499,6 +497,7 @@ mittex = mapADC(mittex);
 uint16_t mittey = servomittearray[KANAL_Y];
 mittey = mapADC(mittey);
 
+//Serial.printf("rawlx: %d \t rawly: %d \n",rawlx,rawly); 
 
 uint16_t ly = mapADC(lymittel);
 
@@ -506,15 +505,17 @@ uint16_t ly = mapADC(lymittel);
 
 uint16_t kanalwerty = ly; // Werte von ADC
 
-uint16_t expokanalwertx = expovalue(KANAL_X,expolevel[KANAL_X],kanalwertx);
-//kanalwertx = expokanalwertx;
-Serial.printf("kanalwertx: %d expokanalwertx: %d\t\t",kanalwertx,expokanalwertx);
+uint16_t expokanalwertx = expovalue(KANAL_X,expolevelarray[KANAL_X],kanalwertx); // expolevelarray enthaelt expo-levels pro knal
 
-uint16_t expokanalwerty = expovalue(KANAL_Y,expolevel[KANAL_Y],kanalwerty);
-//kanalwerty = expokanalwerty;
+//Serial.printf("kanalwertx: \t %d \texpokanalwertx: \t %d\t\t",kanalwertx,expokanalwertx);
+kanalwertx = expokanalwertx;
 
-Serial.printf(" kan werty: %d expokanalwerty: %d\n",kanalwerty,expokanalwerty);
 
+uint16_t expokanalwerty = expovalue(KANAL_Y,expolevelarray[KANAL_Y],kanalwerty);
+
+
+//Serial.printf(" kanalwerty: \t %d \t expokanalwerty: \t %d\n",kanalwerty,expokanalwerty);
+kanalwerty = expokanalwerty;
 
 canaldata.lx = kanalwertx;
 canaldata.ly = kanalwerty;
@@ -544,7 +545,24 @@ floatdiffx *= korrfaktor;
 floatdiffy *= korrfaktor;
 
 float floatkanalwertx =  mittex + floatdiffx + floatdiffy;
+if (fabs(floatkanalwertx - mittex) < NULLBAND)
+{
+  floatkanalwertx = mittex;
+}
+else
+{
+  //Serial.printf("kanalwertx: \t%d \texpokanalwertx: \t%d\n",kanalwertx,expokanalwertx);
+}
+
 float floatkanalwerty =  mittey + floatdiffx - floatdiffy;
+if (fabs(floatkanalwerty - mittey) < NULLBAND)
+{
+  floatkanalwerty = mittey;
+}
+else
+{
+  //Serial.printf("kanalwerty: \t%d \texpokanalwerty: \t%d\n",kanalwerty,expokanalwerty);
+}
 
 //Serial.printf("f dx: %0.2f l f dy: %0.2f d summ: %0.2f korr: %0.4f floatkanalwertx: %0.2f floatkanalwerty: %0.2f\n",floatdiffx, floatdiffy,  diffsumme, korrfaktor, floatkanalwertx, floatkanalwerty); 
 
