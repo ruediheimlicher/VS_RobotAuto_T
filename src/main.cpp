@@ -17,6 +17,7 @@
 #include "elapsedMillis.h"
 #include "expo.h"
 
+#define JOYSICK_B
 
 #define ESPOK 0
 
@@ -31,6 +32,7 @@ uint8_t broadcastAddress1[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 //uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F}; // MINI_PRO 1
 uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17};
 uint8_t broadcastAddress3[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t broadcastAddress4[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
 
 uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 
@@ -43,10 +45,17 @@ uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x8
 //#define MAX_ADC 3500
 //#define MIN_ADC 700
 
+/*
+// joystick runf
 #define MAX_ADC 4050 // Max wert vom ADC
 #define MIN_ADC 1250 // Min wert vom ADC
+*/
 
-#define NULLBAND 30 // nichts tun bei kleineren Kanalwerten
+// Joystick Multiplex
+#define MAX_ADC 3300 // Max wert vom ADC
+#define MIN_ADC 2200 // Min wert vom ADC
+
+#define NULLBAND 0 // nichts tun bei kleineren Kanalwerten
 uint16_t   servomittearray[NUM_SERVOS] = {}; // Werte fuer Mitte
 
 uint16_t maxwinkel = 180;
@@ -60,7 +69,7 @@ void playTon(int ton);
 #define START_TON 0
 #define LICHT_ON 1
 
-uint8_t expolevelarray[NUM_SERVOS] = {1,1,0,0}; // expo-levels pro kanal
+uint8_t expolevelarray[NUM_SERVOS] = {0,0,0,0}; // expo-levels pro kanal
 
 uint16_t ubatt = 0;
 
@@ -81,6 +90,9 @@ uint8_t debouncestatus;
 uint8_t averagecounter = 0;
 uint16_t lxmittelwertarray[AVERAGE];
 uint16_t lymittelwertarray[AVERAGE];
+
+uint16_t lxmittel = 0;
+uint16_t lymittel = 0;
 
 uint8_t propfaktorx = 1.0;
 uint8_t propfaktory = 1.0;
@@ -120,6 +132,7 @@ uint8_t tastencounter = 0;
   
  if(digitalRead(TASTE1) == 0)
    {
+
      returnstatus |= (1<<1);
    }
   if(digitalRead(TASTE2) == 0)
@@ -266,6 +279,7 @@ uint16_t mapADC(uint16_t inADC)
   {
     raw_in = MIN_ADC;
   }
+  // adc-wert(Ausgabe des ADC) auf Tick-Bereich (ms, Impulslaenge) umsetzen
   return map(raw_in, MIN_ADC, MAX_ADC, MIN_TICKS, MAX_TICKS);
 }
 
@@ -386,9 +400,9 @@ for(int i=0;i<NUM_SERVOS;i++)
   }
 
   // register second peer  
-  memcpy(peerInfo.peer_addr, broadcastAddress2, 6);
+  memcpy(peerInfo.peer_addr, broadcastAddress4, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
-    Serial.println("Failed to add peer");
+    Serial.println("Failed to add peer 2");
     return;
   }
   else
@@ -398,13 +412,24 @@ for(int i=0;i<NUM_SERVOS;i++)
   /// register third peer
   memcpy(peerInfo.peer_addr, broadcastAddress3, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
-    Serial.println("Failed to add peer");
+    Serial.println("Failed to add peer 3");
     return;
   }
   else
   {
     Serial.println("add peer 3 OK");
   }
+  /// register forth peer
+  memcpy(peerInfo.peer_addr, broadcastAddress4, 6);
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("Failed to add peer 4");
+    return;
+  }
+  else
+  {
+    Serial.println("add peer 3 OK");
+  }
+
      
    adc1_config_width(ADC_WIDTH_BIT_12);
    adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_11);
@@ -433,6 +458,8 @@ if (ledmillis > ledintervall)
     //Serial.println("led");
     //Serial.println(canaldata.lx);
     //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
+    //Serial.printf("%d \t%d \n", canaldata.x , canaldata.y);
+    Serial.printf("%d \t%d DebouncedState: %d\n", lxmittel , lymittel,DebouncedState);
     if (digitalRead(BOARD_TASTE) == 0)
     {
       Serial.println("boardchange");
@@ -463,7 +490,7 @@ if (DebouncedState & 0x04)
 
 uint16_t rawlx = adc1_get_raw(ADC1_CHANNEL_0);
 lxmittelwertarray[(averagecounter & 0x07)] = rawlx;
-uint16_t lxmittel = 0;
+lxmittel = 0;
 for (int i=0;i < AVERAGE;i++)
 {
   lxmittel += lxmittelwertarray[i];
@@ -474,12 +501,12 @@ for (int i=0;i < AVERAGE;i++)
 //uint16_t lx = tickslimited(lxmittel);
 uint16_t lx = mapADC(lxmittel);
 uint16_t kanalwertx = lx;
-//Serial.printf("lxmittel: %d kanalwertx: %d \n",lxmittel,kanalwertx); 
+//Serial.printf("lxmittel: %d kanalwertx: %d \t",lxmittel,kanalwertx); 
 
 
 uint16_t rawly = adc1_get_raw(ADC1_CHANNEL_3);
 lymittelwertarray[(averagecounter & 0x07)] = rawly;
-uint16_t lymittel = 0;
+lymittel = 0;
 for (int i=0;i < AVERAGE;i++)
 {
   lymittel += lymittelwertarray[i];
@@ -499,11 +526,14 @@ mittey = mapADC(mittey);
 
 //Serial.printf("rawlx: %d \t rawly: %d \n",rawlx,rawly); 
 
+// adc-wert(Ausgabe des ADC) auf Tick-Bereich (ms, Impulslaenge) umsetzen
 uint16_t ly = mapADC(lymittel);
 
 //Serial.printf("lxmittel: %d lx: %d mittex: %d  lymittel: %d ly: %d mittey: %d\n",lxmittel, lx, mittex,lymittel, ly, mittey); 
 
 uint16_t kanalwerty = ly; // Werte von ADC
+
+//Serial.printf("lymittel: %d kanalwerty: %d \n",lymittel,kanalwerty); 
 
 uint16_t expokanalwertx = expovalue(KANAL_X,expolevelarray[KANAL_X],kanalwertx); // expolevelarray enthaelt expo-levels pro knal
 
@@ -520,6 +550,9 @@ kanalwerty = expokanalwerty;
 canaldata.lx = kanalwertx;
 canaldata.ly = kanalwerty;
 
+canaldata.rx = lx;
+canaldata.ry = ly;
+
  // MIX, von RC_22_32
 
  uint16_t mixkanalwertx = 0;
@@ -532,7 +565,7 @@ canaldata.ly = kanalwerty;
 uint16_t diffx = 0;
 uint16_t diffy = 0;
 float floatdiffx = 0.0; // Tempo
-float floatdiffy = 0.0;
+float floatdiffy = 0.0; // Turn
 float korrfaktor = 1;
 floatdiffx = kanalwertx - mittex;
 floatdiffy = kanalwerty - mittey;
@@ -563,9 +596,6 @@ else
 {
   //Serial.printf("kanalwerty: \t%d \texpokanalwerty: \t%d\n",kanalwerty,expokanalwerty);
 }
-
-//Serial.printf("f dx: %0.2f l f dy: %0.2f d summ: %0.2f korr: %0.4f floatkanalwertx: %0.2f floatkanalwerty: %0.2f\n",floatdiffx, floatdiffy,  diffsumme, korrfaktor, floatkanalwertx, floatkanalwerty); 
-
 
 
 
