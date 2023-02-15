@@ -11,6 +11,7 @@
 
 #include <esp_now.h>
 #include <WiFi.h>
+#include <EEPROM.h>
 
 #include <Ticker.h> 
 #include <driver/adc.h>
@@ -52,16 +53,24 @@ uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x8
 */
 
 // Joystick Multiplex
-#define MAX_ADC 3300 // Max wert vom ADC
-#define MIN_ADC 2200 // Min wert vom ADC
+#define MAX_ADC 3310 // Max wert vom ADC
+#define MIN_ADC 2150 // Min wert vom ADC
 
 #define NULLBAND 0 // nichts tun bei kleineren Kanalwerten
 uint16_t   servomittearray[NUM_SERVOS] = {}; // Werte fuer Mitte
+uint16_t   maxADCarray[NUM_SERVOS] = {};
+uint16_t   minADCarray[NUM_SERVOS] = {};
+
+ 
 
 uint16_t maxwinkel = 180;
 
 #define KANAL_X 0
 #define KANAL_Y 1
+
+uint16_t grenzex = servomittearray[KANAL_X]; // wert fuer Eichung
+uint16_t grenzey = servomittearray[KANAL_Y];
+
 
 uint8_t buttonstatus = 0;
 uint8_t tonindex = 0;
@@ -167,8 +176,16 @@ void DebounceSwitch (void)
 
 }
 
+ typedef struct EEPROMdata_struct
+  {
+    uint16_t xH = MAX_ADC;
+    uint16_t xL = MIN_ADC;
+    uint16_t yH = MAX_ADC;
+    uint16_t yL = MIN_ADC;
 
+  }EEPROMdata_struct;
 
+EEPROMdata_struct EEPROMdata;
 
 typedef struct canal_struct 
 {
@@ -354,10 +371,15 @@ void boardchange()
  
 void setup() {
   Serial.begin(115200);
+  EEPROM.begin(512);
+  delay(500);
 
+ 
 for(int i=0;i<NUM_SERVOS;i++)
 {
   servomittearray[i]= (MAX_TICKS + MIN_TICKS)/2;
+  maxADCarray[i] = MAX_ADC - 200;
+  minADCarray[i] = MIN_ADC + 200;
 }
   pinMode(BOARD_TASTE, INPUT_PULLUP);
   //attachInterrupt(BOARD_TASTE, boardchange,FALLING);
@@ -438,6 +460,12 @@ for(int i=0;i<NUM_SERVOS;i++)
 //   adc1_config_channel_atten(ADC1_CHANNEL_6,ADC_ATTEN_DB_0);
 //   adc1_config_channel_atten(ADC1_CHANNEL_7,ADC_ATTEN_DB_0);
 
+
+//EEPROM.get(0,EEPROMdata);
+//EEPROM.end();
+uint16_t xwerthigh = EEPROMdata.xH;
+Serial.print("EEPROM read xH:\n ");
+//Serial.print("EEPROM xh: %d", EEPROMdata.xH);
   
 }
  
@@ -464,6 +492,50 @@ if (ledmillis > ledintervall)
     {
       Serial.println("boardchange");
     }
+
+  // Joystick eichen
+  if (DebouncedState & (1<<2)) // Taste 1
+  {
+
+    if(lxmittel > servomittearray[KANAL_X] + 300) // testausschlag x high
+    {
+      if (lxmittel > maxADCarray[KANAL_X])
+      {
+        maxADCarray[KANAL_X] = lxmittel;
+      }
+      //maxADCarray[KANAL_X] = grenzex;
+    }
+
+    if(lxmittel < (servomittearray[KANAL_X] - 300)) // testausschlag x low
+    {
+      if (lxmittel < minADCarray[KANAL_X])
+      {
+        minADCarray[KANAL_X] = lxmittel;
+      }
+    }
+
+    // Seite Y
+    if(lymittel > servomittearray[KANAL_Y] + 300) // testausschlag x high
+    {
+      if (lymittel > maxADCarray[KANAL_Y])
+      {
+        maxADCarray[KANAL_Y] = lymittel;
+      }
+     
+    }
+
+    if(lymittel < (servomittearray[KANAL_Y] - 300)) // testausschlag x low
+    {
+      if (lymittel < minADCarray[KANAL_Y])
+      {
+        minADCarray[KANAL_Y] = lymittel;
+      }
+    }
+
+
+    Serial.printf("Eichung maxADC X: %d minADC X: %d maxADC Y: %d minADC Y: %d\n", maxADCarray[KANAL_X],minADCarray[KANAL_X],maxADCarray[KANAL_Y],minADCarray[KANAL_Y]);
+  }
+
   }
 
  if (debouncemillis > 5)
