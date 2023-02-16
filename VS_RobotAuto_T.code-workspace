@@ -1,11 +1,12 @@
 {
 	"folders": [
 		{
-			"path": "."
-		},
-		{
 			"name": "VS_RobotAuto_MINI_R",
 			"path": "../VS_RobotAuto_MINI_R"
+		},
+		{
+			"name": "VS_RobotAuto_T",
+			"path": "."
 		}
 	],
 	"settings": {}
