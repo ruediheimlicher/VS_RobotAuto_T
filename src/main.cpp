@@ -26,14 +26,14 @@
 
 // REPLACE WITH YOUR ESP RECEIVER'S MAC ADDRESS
 //uint8_t broadcastAddress1[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
-uint8_t broadcastAddress1[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-//uint8_t broadcastAddress2[] = {0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28}; // ESP8266 D1 MINI
+uint8_t broadcastAddress1[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // stub
+//uint8_t broadcastAddress2[] = {0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28}; 
 
 //uint8_t broadcastAddress2[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
 //uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F}; // MINI_PRO 1
-uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17};
-uint8_t broadcastAddress3[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t broadcastAddress4[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
+uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}; // ESP8266 D1 MINI
+//uint8_t broadcastAddress3[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57}; // RobotStepper
+uint8_t broadcastAddress4[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 
@@ -56,7 +56,7 @@ uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x8
 #define MAX_ADC 3310 // Max wert vom ADC
 #define MIN_ADC 2150 // Min wert vom ADC
 
-#define NULLBAND 0 // nichts tun bei kleineren Kanalwerten
+#define NULLBAND 10 // nichts tun bei kleineren Kanalwerten
 uint16_t   servomittearray[NUM_SERVOS] = {}; // Werte fuer Mitte
 uint16_t   maxADCarray[NUM_SERVOS] = {};
 uint16_t   minADCarray[NUM_SERVOS] = {};
@@ -243,10 +243,10 @@ void deletePeer() {
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) 
 {
   char macStr[18];
- // Serial.print("Packet to: ");
+  //Serial.print("Packet to: ");
   // Copies the sender mac address to a string
- // snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
- //          mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+  //snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
+  //         mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
  // Serial.print(macStr);
  // Serial.print(" send status:\t");
  // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
@@ -371,7 +371,7 @@ void boardchange()
  
 void setup() {
   Serial.begin(115200);
-  EEPROM.begin(512);
+  //EEPROM.begin(512);
   delay(500);
 
  
@@ -389,6 +389,10 @@ for(int i=0;i<NUM_SERVOS;i++)
   pinMode(TASTE3,INPUT_PULLUP);
 
   pinMode(LED_BUILTIN, OUTPUT); 
+
+adc1_config_width(ADC_WIDTH_BIT_12);
+//adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_11);
+
   WiFi.mode(WIFI_STA);
  
   if (esp_now_init() != ESP_OK) 
@@ -414,7 +418,7 @@ for(int i=0;i<NUM_SERVOS;i++)
   if (esp_now_add_peer(&peerInfo) != ESP_OK)
   {
     Serial.println("Failed to add peer 1");
-    return;
+    //return;
   }
   else
   {
@@ -422,15 +426,16 @@ for(int i=0;i<NUM_SERVOS;i++)
   }
 
   // register second peer  
-  memcpy(peerInfo.peer_addr, broadcastAddress4, 6);
+  memcpy(peerInfo.peer_addr, broadcastAddress2, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
     Serial.println("Failed to add peer 2");
-    return;
+    //return;
   }
   else
   {
     Serial.println("add peer 2 OK");
   }
+  /*
   /// register third peer
   memcpy(peerInfo.peer_addr, broadcastAddress3, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
@@ -441,6 +446,7 @@ for(int i=0;i<NUM_SERVOS;i++)
   {
     Serial.println("add peer 3 OK");
   }
+  */
   /// register forth peer
   memcpy(peerInfo.peer_addr, broadcastAddress4, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
@@ -449,11 +455,12 @@ for(int i=0;i<NUM_SERVOS;i++)
   }
   else
   {
-    Serial.println("add peer 3 OK");
+    Serial.println("add peer 4 OK");
   }
 
-     
-   adc1_config_width(ADC_WIDTH_BIT_12);
+  sys_delay_ms(100);
+
+   //adc1_config_width(ADC_WIDTH_BIT_12);
    adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_11);
    adc1_config_channel_atten(ADC1_CHANNEL_3,ADC_ATTEN_DB_11);
 
@@ -463,8 +470,8 @@ for(int i=0;i<NUM_SERVOS;i++)
 
 //EEPROM.get(0,EEPROMdata);
 //EEPROM.end();
-uint16_t xwerthigh = EEPROMdata.xH;
-Serial.print("EEPROM read xH:\n ");
+//uint16_t xwerthigh = EEPROMdata.xH;
+//Serial.print("EEPROM read xH:\n ");
 //Serial.print("EEPROM xh: %d", EEPROMdata.xH);
   
 }
@@ -487,7 +494,7 @@ if (ledmillis > ledintervall)
     //Serial.println(canaldata.lx);
     //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
     //Serial.printf("%d \t%d \n", canaldata.x , canaldata.y);
-    Serial.printf("%d \t%d DebouncedState: %d\n", lxmittel , lymittel,DebouncedState);
+    //Serial.printf("%d \t%d DebouncedState: %d\n", lxmittel , lymittel,DebouncedState);
     if (digitalRead(BOARD_TASTE) == 0)
     {
       Serial.println("boardchange");
@@ -748,7 +755,7 @@ canaldata.ly = uint16_t(floatkanalwerty);
   }
   //Serial.printf("%d \t%d \t%d \t**  \t%d\t%d  \t%d\n", rawlx , lx, canaldata.lx , rawly , ly, canaldata.ly);
     //Serial.printf("%d\t%d  \t%d m: %d\n",  rawly , ly, canaldata.ly, lymittel);
-  //Serial.printf("x: %d \ty: %d \n", canaldata.x , canaldata.y);
+  //Serial.printf("lx: %d \tly: %d \tx: %d \ty: %d \n", canaldata.lx , canaldata.ly,canaldata.x , canaldata.y);
 
     sendtimer = 0;
     //Serial.print(canaldata.lx);
