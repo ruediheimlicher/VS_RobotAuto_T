@@ -44,7 +44,7 @@ uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}; // ESP8266 D
 //uint8_t broadcastAddress3[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57}; // RobotStepper
 uint8_t broadcastAddress4[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x8C, 0xAA, 0xB5, 0x7B, 0xA3, 0x28},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
+uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}, {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57},{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 
 #define NUM_SERVOS 4
 
@@ -135,6 +135,8 @@ uint8_t firstrun = 1;
 #define TASTE1 27
 #define TASTE2 26
 #define TASTE3 25
+
+#define TASTATUR_PIN  33
 uint8_t tastencounter = 0;
 
 
@@ -405,8 +407,8 @@ for(int i=0;i<NUM_SERVOS;i++)
   maxADCarray[i] = MAX_ADC - 200;
   minADCarray[i] = MIN_ADC + 200;
 }
-  pinMode(BOARD_TASTE, INPUT_PULLUP);
-  //attachInterrupt(BOARD_TASTE, boardchange,FALLING);
+  pinMode(TASTATUR_PIN, INPUT);
+ 
   pinMode(TASTE0,INPUT_PULLUP);
   pinMode(TASTE1,INPUT_PULLUP);
   pinMode(TASTE2,INPUT_PULLUP);
@@ -429,11 +431,7 @@ adc1_config_width(ADC_WIDTH_BIT_12);
   esp_err_t registererr = esp_now_register_send_cb(OnDataSent);
   Serial.printf("registererr: %d\n",registererr);
 
- if (digitalRead(BOARD_TASTE) == 0)
-    {
-      Serial.println("boardchange setup");
-    }
-   
+    
   // register peer
   peerInfo.channel = 0;  
   peerInfo.encrypt = false;
@@ -448,7 +446,7 @@ adc1_config_width(ADC_WIDTH_BIT_12);
   {
     Serial.println("add peer 1 OK");
   }
-
+/*
   // register second peer  
   memcpy(peerInfo.peer_addr, broadcastAddress2, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
@@ -459,6 +457,7 @@ adc1_config_width(ADC_WIDTH_BIT_12);
   {
     Serial.println("add peer 2 OK");
   }
+  */
   /*
   /// register third peer
   memcpy(peerInfo.peer_addr, broadcastAddress3, 6);
@@ -487,6 +486,7 @@ adc1_config_width(ADC_WIDTH_BIT_12);
    //adc1_config_width(ADC_WIDTH_BIT_12);
    adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_11);
    adc1_config_channel_atten(ADC1_CHANNEL_3,ADC_ATTEN_DB_11);
+  adc1_config_channel_atten(ADC1_CHANNEL_5,ADC_ATTEN_DB_11);
 
 //   adc1_config_channel_atten(ADC1_CHANNEL_6,ADC_ATTEN_DB_0);
 //   adc1_config_channel_atten(ADC1_CHANNEL_7,ADC_ATTEN_DB_0);
@@ -519,6 +519,16 @@ if (firstrun)
   lcd.print(F("VS_ROBOTAUTO_T"));
   fixServoMitte();
 
+// register second peer  
+  memcpy(peerInfo.peer_addr, broadcastAddressArray[2], 6);
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("Failed to add peer 2");
+    //return;
+  }
+  else
+  {
+    Serial.println("add peer 2 OK");
+  }
   firstrun = 0;
 }
 if (ledmillis > ledintervall)
@@ -538,10 +548,7 @@ if (ledmillis > ledintervall)
     lcd.write(' ');
      lcd.print(canaldata.ly);
 
-    if (digitalRead(BOARD_TASTE) == 0)
-    {
-      Serial.println("boardchange");
-    }
+    
 
   // Joystick eichen
   if (DebouncedState & (1<<2)) // Taste 1
