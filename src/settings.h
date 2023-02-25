@@ -21,7 +21,7 @@
 #define TASTER      993
 */
 
-
+/*
 #define TASTE01     28
 #define TASTE02     62
 #define TASTE03     110
@@ -34,6 +34,17 @@
 #define TASTEL      637
 #define TASTE00     659
 #define TASTER      680
+*/
 
+// Tastatur 3x3
+#define TASTE01     127
+#define TASTE02     203
+#define TASTE03     283
+#define TASTE04     379
+#define TASTE05     475
+#define TASTE06     533
+#define TASTE07     580
+#define TASTE08     633
+#define TASTE09     680
 
 

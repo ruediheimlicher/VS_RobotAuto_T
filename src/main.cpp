@@ -46,7 +46,15 @@ uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}; // ESP8266 D
 //uint8_t broadcastAddress3[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57}; // RobotStepper
 uint8_t broadcastAddress4[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-uint8_t broadcastAddressArray[8][6] = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}, {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57},{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
+uint8_t broadcastAddressArray[8][6] = 
+{{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}, // ESP8266 D1 MINI
+{0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57},
+{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},
+{0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},
+{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 uint8_t peerpos = 1; // geladener peer
 
 #define NUM_SERVOS 4
@@ -151,6 +159,8 @@ uint8_t firstrun = 1;
 #define TASTATUR_PIN  33
 uint8_t tastencounter = 0;
 uint16_t tastaturmittel = 0;
+uint16_t tastaturwert = 0;
+
 uint16_t Taste = 0;
 
 uint16_t lcdtest = 0;
@@ -413,20 +423,21 @@ uint8_t Tastenwahl(uint16_t Tastaturwert)
       return 8;
    if (Tastaturwert < TASTE09)
       return 9;
+      /*
    if (Tastaturwert < TASTEL)
       return 10;
    if (Tastaturwert < TASTE00)
       return 0;
    if (Tastaturwert < TASTER)
       return 12;
-   
+   */
    return 0;
 }
 
 void tastenfunktion(uint16_t Tastenwert)
 {
-
-   if (Tastenwert>8) // ca Minimalwert der Matrix
+ //Serial.printf("\t\t\tTastenwert IN: %d\n",Tastenwert);
+   if (Tastenwert>20) // ca Minimalwert der Matrix
    {
       //         wdt_reset();
       /*
@@ -445,7 +456,7 @@ void tastenfunktion(uint16_t Tastenwert)
        */
       //Serial.printf("TastaturCount: %d Tastenwert: %d \n",TastaturCount,Tastenwert);
       TastaturCount++;
-      if (TastaturCount)   //   Prellen
+      if (TastaturCount > 5)   //   Prellen
       {
         
          TastaturCount=0x00;
@@ -463,7 +474,7 @@ void tastenfunktion(uint16_t Tastenwert)
             Taste=Tastenwahl(Tastenwert);
             Serial.printf("Tastenwert: %d Taste: %d \n",Tastenwert,Taste);
             TastaturCount=0;
-            Tastenwert=0x00;
+            //Tastenwert=0x00;
             
             uint8_t inBytes[4]={};
             
@@ -471,7 +482,7 @@ void tastenfunktion(uint16_t Tastenwert)
             {
                case 0://
                { 
-                  Serial.printf("Taste 0\n");
+                  Serial.printf("\tTaste 0\n");
                   break;
                   // Blinken auf C2
                   
@@ -481,7 +492,7 @@ void tastenfunktion(uint16_t Tastenwert)
                   
                case 1: 
                {
-                  Serial.printf("Taste 1\n");
+                  Serial.printf("\tTaste 1\n");
                
                   
                }
@@ -489,55 +500,53 @@ void tastenfunktion(uint16_t Tastenwert)
                   
                case 2:     // up                             //   Menu vorwaertsschalten   
                {
-                Serial.printf("Taste 2\n");
+                Serial.printf("\tTaste 2\n");
                   
                }break;
                   
                case 3:   //
                {
-                Serial.printf("Taste 3\n");
+                Serial.printf("\tTaste 3\n");
                 
                }break;
                   
                case 4:   // left
                {
-                  Serial.printf("Taste 4\n");
+                  Serial.printf("\tTaste 4\n");
                } break; // case Vortag
                   
                   
                case 5:                        // Ebene tiefer
                {
-                  Serial.printf("Taste 5\n");
+                  Serial.printf("\tTaste 5\n");
                   
                   
                   
-               }            break;
+               } break;
                   
                case 6: // right
                {
-                Serial.printf("Taste 6\n");
+                Serial.printf("\tTaste 6\n");
                   
                } break; // case Folgetag
                   
                case 7:
                {
-                  Serial.printf("\nTaste 7 \n");
+                  Serial.printf("\tTaste 7 \n");
                   
-               }
-                  break;
+               }break;
                   
                   
                case 8:    // down                                //Menu rueckwaertsschalten
                {
-                Serial.printf("Taste 1\n");
+                Serial.printf("\tTaste 8\n");
               
                   
-               }
-                  break;
+               }break;
                   
                case 9:
                {
-                Serial.printf("Taste 9\n");
+                Serial.printf("\tTaste 9\n");
                   
                   
                }break;
@@ -569,8 +578,9 @@ void tastenfunktion(uint16_t Tastenwert)
       {
  
          
-         Serial.printf("Tastenwert 0\n");
+        // Serial.printf("Tastenwert 0\n");
          analogtastaturstatus &= ~(1<<TASTE_ON);
+
       }
    }
 }
@@ -582,7 +592,7 @@ uint16_t readTastatur(void)
    if (adctastenwert > 10)
    {
       //Serial.printf("readTastatur adctastenwert: %d\n",adctastenwert);
-      //lcd.setCursor(0, 2); 
+      //lcd.setCursor(10, 2); 
       //lcd.print(adctastenwert);
       return adctastenwert;
    }
@@ -618,7 +628,7 @@ for(int i=0;i<NUM_SERVOS;i++)
   maxADCarray[i] = MAX_ADC - 200;
   minADCarray[i] = MIN_ADC + 200;
 }
-  pinMode(TASTATUR_PIN, INPUT);
+  pinMode(TASTATUR_PIN, INPUT_PULLDOWN);
  
   pinMode(TASTE0,INPUT_PULLUP);
   pinMode(TASTE1,INPUT_PULLUP);
@@ -729,10 +739,11 @@ if (firstrun)
   //lcd.print(F("PCF8574 is OK..."));
   lcd.setCursor(0, 0);              //set 1-st colum & 2-nd row, 1-st colum & row started at zero
   lcd.print(F("VS_ROBOTAUTO_T"));
+
   fixServoMitte();
 
-// register second peer  
-  memcpy(peerInfo.peer_addr, broadcastAddressArray[2], 6);
+// register  peer  
+  memcpy(peerInfo.peer_addr, broadcastAddressArray[1], 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
     Serial.println("Failed to add peer 2");
     //return;
@@ -756,19 +767,29 @@ if (ledmillis > ledintervall)
     //Serial.printf("%d \t%d \n", canaldata.x , canaldata.y);
     //Serial.printf("%d \t%d DebouncedState: %d\n", lxmittel , lymittel,DebouncedState);
     lcd.setCursor(0,1);
-    lcd_putint12(canaldata.lx);
-    lcd.write(' ');
-    lcd_putint12(canaldata.ly);
-    lcd.write(' ');
-    
+    lcd_puts("data");
+    lcd.setCursor(6,1);
+  lcd_puts("expo");
 
-    
-    lcd_putint12(tastaturmittel);
-    lcd.write(' ');
+
     lcd.setCursor(0,2);
+    lcd_putint12(canaldata.lx);
+    lcd.setCursor(6,2);
+    lcd_putint1(expolevelarray[0]);
+    lcd.setCursor(0,3);
+    lcd_putint12(canaldata.ly);
+    lcd.setCursor(6,3);
+    lcd_putint1(expolevelarray[1]);
+
+    /*
+    lcd_putint12(tastaturwert);
+    lcd.write(' ');
+    lcd_putint1(Taste);
+    lcd.setCursor(0,3);
     lcd_putint(lcdtest++);
     lcd_putc(' ');
     lcd_putint12(lcdtest++);
+    */
   // Joystick eichen
   if (DebouncedState & (1<<2)) // Taste 1
   {
@@ -871,13 +892,13 @@ for (int i=0;i < AVERAGE;i++)
   tastaturmittel += tastaturmittelwertarray[i];
 }
 
-tastaturmittel /= AVERAGE;
+tastaturmittel = rawtastaturwert;///= AVERAGE;
 
 //tastaturmittel = 0xFFF - tastaturmittel;
 tastaturmittel /= 4;
 tastaturmittel = tastaturmittel ; //* 9 / 8 ;
-tastaturmittel = 0x3FF - tastaturmittel;
-
+tastaturwert = 0x3FF - tastaturmittel;
+tastenfunktion(tastaturwert);
 
 
 averagecounter++;
@@ -887,8 +908,8 @@ averagecounter++;
       if (tastencounter > 10)
       {
          tastencounter = 0;
-         //Taste = readTastatur();
-         tastenfunktion(tastaturmittel);
+         //tastenfunktion(tastaturmittel);
+          
 
       }
 
