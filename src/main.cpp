@@ -22,6 +22,7 @@
 
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+
 #define COLUMS           20   //LCD columns
 #define ROWS             4    //LCD rows
 #define LCD_SPACE_SYMBOL 0x20 //space symbol from LCD ROM, see p.9 of GDM2004D datasheet
@@ -29,11 +30,26 @@
 LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4,5, 6, 16, 11, 12, 13, 14, POSITIVE);
 //LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
+// OLED
+#include "SSD1306Wire.h"  
+
+//#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#define SSD1305_128_64
+SSD1306Wire display(0x3c, SDA, SCL); 
+
+#define DEMO_DURATION 3000
+typedef void (*Demo)(void);
+int counter = 1;
+// end OLED
 #define JOYSICK_B
 
 #define ESPOK 0
 
 #define SENDINTERVALL 20
+
+#define ESP8266_D1_MINI_PEER  1
+#define ESP8266_ROBOTSTEPPER_PEER 2
 
 // REPLACE WITH YOUR ESP RECEIVER'S MAC ADDRESS
 //uint8_t broadcastAddress1[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57};
@@ -49,7 +65,7 @@ uint8_t broadcastAddress4[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 uint8_t broadcastAddressArray[8][6] = 
 {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}, // ESP8266 D1 MINI
-{0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57},
+{0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57}, // RobotStepper
 {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},
 {0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},
 {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
@@ -160,6 +176,8 @@ uint8_t firstrun = 1;
 uint8_t tastencounter = 0;
 uint16_t tastaturmittel = 0;
 uint16_t tastaturwert = 0;
+uint16_t ADCwert = 0;
+
 
 uint16_t Taste = 0;
 
@@ -456,7 +474,7 @@ void tastenfunktion(uint16_t Tastenwert)
        */
       //Serial.printf("TastaturCount: %d Tastenwert: %d \n",TastaturCount,Tastenwert);
       TastaturCount++;
-      if (TastaturCount > 5)   //   Prellen
+      if (TastaturCount > 5)  //   Prellen
       {
         
          TastaturCount=0x00;
@@ -513,14 +531,12 @@ void tastenfunktion(uint16_t Tastenwert)
                case 4:   // left
                {
                   Serial.printf("\tTaste 4\n");
-               } break; // case Vortag
+               } break; // 
                   
                   
                case 5:                        // Ebene tiefer
                {
                   Serial.printf("\tTaste 5\n");
-                  
-                  
                   
                } break;
                   
@@ -528,7 +544,7 @@ void tastenfunktion(uint16_t Tastenwert)
                {
                 Serial.printf("\tTaste 6\n");
                   
-               } break; // case Folgetag
+               } break; // 
                   
                case 7:
                {
@@ -619,8 +635,15 @@ void setup() {
   delay(2000);
 */
 
-  
-  
+
+// OLED 
+// Initialising the UI will init the display too.
+pinMode(SCL,OUTPUT);
+  display.init();
+
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_10);
+// end OLED
 
 for(int i=0;i<NUM_SERVOS;i++)
 {
@@ -628,7 +651,7 @@ for(int i=0;i<NUM_SERVOS;i++)
   maxADCarray[i] = MAX_ADC - 200;
   minADCarray[i] = MIN_ADC + 200;
 }
-  pinMode(TASTATUR_PIN, INPUT_PULLDOWN);
+  pinMode(TASTATUR_PIN, INPUT);
  
   pinMode(TASTE0,INPUT_PULLUP);
   pinMode(TASTE1,INPUT_PULLUP);
@@ -724,6 +747,87 @@ adc1_config_width(ADC_WIDTH_BIT_12);
 //  int erfolg = lcd.begin(COLUMS, ROWS, LCD_5x8DOTS, 21, 22, 400000, 250);
 
 }
+
+// OLED functions
+
+void drawFontFaceDemo() {
+  // Font Demo1
+  // create more fonts at http://oleddisplay.squix.ch/
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, 0, "Hello world");
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(0, 10, "Hello world");
+  display.setFont(ArialMT_Plain_24);
+  display.drawString(0, 26, "Hello world");
+}
+
+void drawTextFlowDemo() {
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawStringMaxWidth(0, 0, 128,
+                             "Lorem ipsum\n dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore." );
+}
+
+void drawTextAlignmentDemo() {
+  // Text alignment demo
+  display.setFont(ArialMT_Plain_10);
+
+  // The coordinates define the left starting point of the text
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, 10, "Left aligned (0,10)");
+
+  // The coordinates define the center of the text
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 22, "Center aligned (64,22)");
+
+  // The coordinates define the right end of the text
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(128, 33, "Right aligned (128,33)");
+}
+
+void drawRectDemo() {
+  // Draw a pixel at given position
+  for (int i = 0; i < 10; i++) {
+    display.setPixel(i, i);
+    display.setPixel(10 - i, i);
+  }
+  display.drawRect(12, 12, 20, 20);
+
+  // Fill the rectangle
+  display.fillRect(14, 14, 17, 17);
+
+  // Draw a line horizontally
+  display.drawHorizontalLine(0, 40, 20);
+
+  // Draw a line horizontally
+  display.drawVerticalLine(40, 0, 20);
+}
+
+void drawCircleDemo() {
+  for (int i = 1; i < 8; i++) {
+    display.setColor(WHITE);
+    display.drawCircle(32, 32, i * 3);
+    if (i % 2 == 0) {
+      display.setColor(BLACK);
+    }
+    display.fillCircle(96, 32, 32 - i * 3);
+  }
+}
+
+void drawProgressBarDemo() {
+  int progress = (counter / 5) % 100;
+  // draw the progress bar
+  display.drawProgressBar(0, 32, 120, 10, progress);
+
+  // draw the percentage as String
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 15, String(progress) + "%");
+}
+
+
+
+// end OLED functions
  
  
 void loop() 
@@ -732,17 +836,18 @@ void loop()
 if (firstrun)
 {
 
-
+/*
 // lcd.print(F("PCF8574 is OK..."));
  int erfolg = lcd.begin(COLUMS, ROWS, LCD_5x8DOTS, 21, 22, 400000, 250);
  // Serial.printf("erfolg: %d\n",erfolg);
   //lcd.print(F("PCF8574 is OK..."));
   lcd.setCursor(0, 0);              //set 1-st colum & 2-nd row, 1-st colum & row started at zero
   lcd.print(F("VS_ROBOTAUTO_T"));
-
+*/
   fixServoMitte();
 
 // register  peer  
+// 1: D1 MINI, 2: RobotStepper
   memcpy(peerInfo.peer_addr, broadcastAddressArray[1], 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
     Serial.println("Failed to add peer 2");
@@ -769,7 +874,7 @@ if (ledmillis > ledintervall)
     lcd.setCursor(0,1);
     lcd_puts("data");
     lcd.setCursor(6,1);
-  lcd_puts("expo");
+    lcd_puts("expo");
 
 
     lcd.setCursor(0,2);
@@ -781,6 +886,12 @@ if (ledmillis > ledintervall)
     lcd.setCursor(6,3);
     lcd_putint1(expolevelarray[1]);
 
+    lcd.setCursor(16,0);
+    lcd_putint12(tastaturwert);
+    lcd.setCursor(16,1);
+    lcd_putint12(ADCwert);
+
+
     /*
     lcd_putint12(tastaturwert);
     lcd.write(' ');
@@ -790,6 +901,26 @@ if (ledmillis > ledintervall)
     lcd_putc(' ');
     lcd_putint12(lcdtest++);
     */
+
+    // OLED
+    display.clear();
+    display.setFont(ArialMT_Plain_16);
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.drawString(0, 0, String(canaldata.lx));
+    display.drawString(0, 16, String(canaldata.ly));
+
+
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_RIGHT);
+    display.drawString(128, 54, String(millis()));
+  // write the buffer to the display
+  //drawCircleDemo();
+  drawProgressBarDemo();
+    display.display();
+
+    // end OLED
+
+
   // Joystick eichen
   if (DebouncedState & (1<<2)) // Taste 1
   {
@@ -891,13 +1022,15 @@ for (int i=0;i < AVERAGE;i++)
 {
   tastaturmittel += tastaturmittelwertarray[i];
 }
-
+ADCwert = rawtastaturwert;
 tastaturmittel = rawtastaturwert;///= AVERAGE;
 
 //tastaturmittel = 0xFFF - tastaturmittel;
 tastaturmittel /= 4;
 tastaturmittel = tastaturmittel ; //* 9 / 8 ;
 tastaturwert = 0x3FF - tastaturmittel;
+//tastaturwert =  tastaturmittel;
+
 tastenfunktion(tastaturwert);
 
 

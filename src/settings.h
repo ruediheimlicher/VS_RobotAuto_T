@@ -37,14 +37,14 @@
 */
 
 // Tastatur 3x3
-#define TASTE01     127
-#define TASTE02     203
-#define TASTE03     283
-#define TASTE04     379
-#define TASTE05     475
-#define TASTE06     533
-#define TASTE07     580
-#define TASTE08     633
-#define TASTE09     680
+#define TASTE01     120
+#define TASTE02     168
+#define TASTE03     251
+#define TASTE04     320
+#define TASTE05     408
+#define TASTE06     484
+#define TASTE07     546
+#define TASTE08     597
+#define TASTE09     660
 
 
