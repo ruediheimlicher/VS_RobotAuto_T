@@ -31,12 +31,19 @@ LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4,5, 6, 16, 11, 12, 13, 14, POSI
 //LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
 // OLED
-#include "SSD1306Wire.h"  
+//#include "SSD1306Wire.h"  
 
-//#include <Adafruit_SSD1306.h>
+#include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
-#define SSD1305_128_64
-SSD1306Wire display(0x3c, SDA, SCL); 
+#include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeSans12pt7b.h>
+
+//#define SSD1305_128_64
+//SSD1306Wire display(0x3c, SDA, SCL); 
+
+#define OLED_RESET -1
+
+Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
 #define DEMO_DURATION 3000
 typedef void (*Demo)(void);
@@ -624,25 +631,25 @@ void setup() {
 
 
 
-  /*
- while (lcd.begin(COLUMS, ROWS, LCD_5x8DOTS, 21, 22, 400000, 250) != 1) //colums, rows, characters size, SDA, SCL, I2C speed in Hz, I2C stretch time in usec 
-  {
-    Serial.println(F("PCF8574 is not connected or lcd pins declaration is wrong. Only pins numbers: 4,5,6,16,11,12,13,14 are legal."));
-    delay(5000);
-  }
-
-  lcd.print(F("PCF8574 is OK...")); //(F()) saves string to flash & keeps dynamic memory free
-  delay(2000);
-*/
-
 
 // OLED 
 // Initialising the UI will init the display too.
-pinMode(SCL,OUTPUT);
-  display.init();
+ if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+  delay(2000);
+  display.clearDisplay();
 
-  display.flipScreenVertically();
-  display.setFont(ArialMT_Plain_10);
+  //display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 10);
+  // Display static text
+  //display.setTextSize(2);
+  display.setFont(&FreeSans9pt7b);
+  display.println("Hello, world!");
+  display.display(); 
+ 
 // end OLED
 
 for(int i=0;i<NUM_SERVOS;i++)
@@ -750,82 +757,6 @@ adc1_config_width(ADC_WIDTH_BIT_12);
 
 // OLED functions
 
-void drawFontFaceDemo() {
-  // Font Demo1
-  // create more fonts at http://oleddisplay.squix.ch/
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "Hello world");
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(0, 10, "Hello world");
-  display.setFont(ArialMT_Plain_24);
-  display.drawString(0, 26, "Hello world");
-}
-
-void drawTextFlowDemo() {
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawStringMaxWidth(0, 0, 128,
-                             "Lorem ipsum\n dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore." );
-}
-
-void drawTextAlignmentDemo() {
-  // Text alignment demo
-  display.setFont(ArialMT_Plain_10);
-
-  // The coordinates define the left starting point of the text
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(0, 10, "Left aligned (0,10)");
-
-  // The coordinates define the center of the text
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(64, 22, "Center aligned (64,22)");
-
-  // The coordinates define the right end of the text
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.drawString(128, 33, "Right aligned (128,33)");
-}
-
-void drawRectDemo() {
-  // Draw a pixel at given position
-  for (int i = 0; i < 10; i++) {
-    display.setPixel(i, i);
-    display.setPixel(10 - i, i);
-  }
-  display.drawRect(12, 12, 20, 20);
-
-  // Fill the rectangle
-  display.fillRect(14, 14, 17, 17);
-
-  // Draw a line horizontally
-  display.drawHorizontalLine(0, 40, 20);
-
-  // Draw a line horizontally
-  display.drawVerticalLine(40, 0, 20);
-}
-
-void drawCircleDemo() {
-  for (int i = 1; i < 8; i++) {
-    display.setColor(WHITE);
-    display.drawCircle(32, 32, i * 3);
-    if (i % 2 == 0) {
-      display.setColor(BLACK);
-    }
-    display.fillCircle(96, 32, 32 - i * 3);
-  }
-}
-
-void drawProgressBarDemo() {
-  int progress = (counter / 5) % 100;
-  // draw the progress bar
-  display.drawProgressBar(0, 32, 120, 10, progress);
-
-  // draw the percentage as String
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(64, 15, String(progress) + "%");
-}
-
-
 
 // end OLED functions
  
@@ -903,21 +834,7 @@ if (ledmillis > ledintervall)
     */
 
     // OLED
-    display.clear();
-    display.setFont(ArialMT_Plain_16);
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 0, String(canaldata.lx));
-    display.drawString(0, 16, String(canaldata.ly));
-
-
-    display.setFont(ArialMT_Plain_10);
-    display.setTextAlignment(TEXT_ALIGN_RIGHT);
-    display.drawString(128, 54, String(millis()));
-  // write the buffer to the display
-  //drawCircleDemo();
-  drawProgressBarDemo();
-    display.display();
-
+    
     // end OLED
 
 
