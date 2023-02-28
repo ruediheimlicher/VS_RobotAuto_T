@@ -904,10 +904,12 @@ if (ledmillis > ledintervall)
 
     // OLED
     display.clear();
-    display.setFont(ArialMT_Plain_16);
+    display.setFont(ArialMT_Plain_10);
     display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 0, String(canaldata.lx));
-    display.drawString(0, 16, String(canaldata.ly));
+    display.drawString(0, 0, String(lxmittel));
+    display.drawString(32, 0, String(canaldata.lx));
+    display.drawString(0, 12, String(lymittel));
+    display.drawString(32, 12, String(canaldata.ly));
 
 
     display.setFont(ArialMT_Plain_10);
@@ -915,7 +917,8 @@ if (ledmillis > ledintervall)
     display.drawString(128, 54, String(millis()));
   // write the buffer to the display
   //drawCircleDemo();
-  drawProgressBarDemo();
+  //drawProgressBarDemo();
+    //drawPixel(30,30,WHITE);
     display.display();
 
     // end OLED
