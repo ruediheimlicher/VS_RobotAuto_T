@@ -33,11 +33,28 @@ LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4,5, 6, 16, 11, 12, 13, 14, POSI
 // OLED
 //#include "SSD1306Wire.h"  
 
-#include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSans12pt7b.h>
-
+static const unsigned char PROGMEM logo16_glcd_bmp[] =
+{ B00000000, B11000000,
+  B00000001, B11000000,
+  B00000001, B11000000,
+  B00000011, B11100000,
+  B11110011, B11100000,
+  B11111110, B11111000,
+  B01111110, B11111111,
+  B00110011, B10011111,
+  B00011111, B11111100,
+  B00001101, B01110000,
+  B00011011, B10100000,
+  B00111111, B11100000,
+  B00111111, B11110000,
+  B01111100, B11110000,
+  B01110000, B01110000,
+  B00000000, B00110000 };
 //#define SSD1305_128_64
 //SSD1306Wire display(0x3c, SDA, SCL); 
 
@@ -121,7 +138,7 @@ void playTon(int ton);
 #define START_TON 0
 #define LICHT_ON 1
 
-uint8_t expolevelarray[NUM_SERVOS] = {0,0,0,0}; // expo-levels pro kanal
+uint8_t expolevelarray[NUM_SERVOS] = {1,1,0,0}; // expo-levels pro kanal
 
 uint16_t ubatt = 0;
 
@@ -129,6 +146,9 @@ int ledintervall = 800;
 Ticker timer;
 elapsedMillis ledmillis;
 
+elapsedMillis displaymillis;
+
+int displayintervall = 100;
 
 // debounce
 Ticker debouncetimer;
@@ -570,7 +590,7 @@ void tastenfunktion(uint16_t Tastenwert)
                case 9:
                {
                 Serial.printf("\tTaste 9\n");
-                  
+                  DebouncedState |= (1<<3);
                   
                }break;
                   
@@ -593,13 +613,12 @@ void tastenfunktion(uint16_t Tastenwert)
          }
          
       }
-      
    }
    else 
    {
       if (analogtastaturstatus & (1<<TASTE_ON))
       {
- 
+        Taste = 0;
          
         // Serial.printf("Tastenwert 0\n");
          analogtastaturstatus &= ~(1<<TASTE_ON);
@@ -641,13 +660,15 @@ void setup() {
   delay(2000);
   display.clearDisplay();
 
-  //display.setTextSize(1);
+  display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0, 10);
   // Display static text
   //display.setTextSize(2);
-  display.setFont(&FreeSans9pt7b);
+  //display.setFont(&FreeSans9pt7b);
   display.println("Hello, world!");
+  //display.fillCircle(display.width()/2, display.height()/2, 10, WHITE);
+
   display.display(); 
  
 // end OLED
@@ -752,7 +773,8 @@ adc1_config_width(ADC_WIDTH_BIT_12);
 //Serial.print("EEPROM read xH:\n ");
 //Serial.print("EEPROM xh: %d", EEPROMdata.xH);
 //  int erfolg = lcd.begin(COLUMS, ROWS, LCD_5x8DOTS, 21, 22, 400000, 250);
-
+buttonstatus |= (1<<START_TON);
+//buttonstatus = 13;
 }
 
 // OLED functions
@@ -777,6 +799,11 @@ if (firstrun)
 */
   fixServoMitte();
 
+  for (int i=0;i<AVERAGE;i++)
+  {
+    lxmittelwertarray[i] = servomittearray[KANAL_X];
+    lymittelwertarray[i] = servomittearray[KANAL_Y];
+  }
 // register  peer  
 // 1: D1 MINI, 2: RobotStepper
   memcpy(peerInfo.peer_addr, broadcastAddressArray[1], 6);
@@ -788,8 +815,35 @@ if (firstrun)
   {
     Serial.println("add peer 2 OK");
   }
+ buttonstatus |= (1<<START_TON);
   firstrun = 0;
 }
+
+if (displaymillis > displayintervall)
+{
+  // https://en.wikipedia.org/wiki/Code_page_437
+  displaymillis = 0;
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.println("RobotAuto_T");
+  display.setCursor(0,20);
+  display.print(lxmittel);
+  display.setCursor(32,20);
+  display.print(canaldata.x);
+ 
+  display.setCursor(0, 32);
+  display.print(lymittel);
+  display.setCursor(32,32);
+  display.print(canaldata.y);
+ 
+  display.setCursor(100,0);
+  display.print(Taste);
+   display.setCursor(110,0);
+   //buttonstatus = 13;
+  display.print(buttonstatus);
+  display.display();
+}
+
 if (ledmillis > ledintervall)
   {
     ledmillis = 0;
@@ -807,7 +861,27 @@ if (ledmillis > ledintervall)
     lcd.setCursor(6,1);
     lcd_puts("expo");
 
+         // OLED
+     //display.clearDisplay();
+     //display.setTextSize(1);
+    //display.setCursor(0,0);
+     //display.print(lxmittel);
+     //display.display();
+    //display.setCursor(0, 46);
+    //display.setTextSize(2);
+    //display.setFont(&FreeSans12pt7b);
+    //display.drawPixel(20,80,WHITE);
+    //display.drawRect(20,20,30,10,WHITE);
+     //display.print(canaldata.lx);
+    //display.setCursor(40,30);
+   //display.drawChar(40,35,0x10,WHITE,1,1);
+    //display.drawChar(45,35,0x11,WHITE,1,1);
 
+    
+      //display.display();
+ 
+     // end OLED
+    /*
     lcd.setCursor(0,2);
     lcd_putint12(canaldata.lx);
     lcd.setCursor(6,2);
@@ -822,7 +896,7 @@ if (ledmillis > ledintervall)
     lcd.setCursor(16,1);
     lcd_putint12(ADCwert);
 
-
+    */
     /*
     lcd_putint12(tastaturwert);
     lcd.write(' ');
@@ -904,6 +978,7 @@ if (DebouncedState & 0x04)
       tastencounter++;
       }
     }
+
 
 uint16_t rawlx = adc1_get_raw(ADC1_CHANNEL_0);
 lxmittelwertarray[(averagecounter & 0x07)] = rawlx;
@@ -1121,11 +1196,21 @@ canaldata.ly = uint16_t(floatkanalwerty);
 //Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
 
   // Tasten uebergeben
+
   canaldata.digi = DebouncedState;
+
+  if (buttonstatus & (1<<START_TON))
+  {
+    Serial.printf("buttonstatus: %d \n",buttonstatus);
+    canaldata.digi |= (1<<3);
+    buttonstatus &= ~(1<<START_TON);
+  }
+
+  
   if (lastDebouncedState != DebouncedState)
   {
-    Serial.print("DebouncedState: ");
-    Serial.println(DebouncedState);
+    //Serial.print("DebouncedState: ");
+    //Serial.println(DebouncedState);
     lastDebouncedState = DebouncedState;
   }
   //Serial.printf("%d \t%d \t%d \t**  \t%d\t%d  \t%d\n", rawlx , lx, canaldata.lx , rawly , ly, canaldata.ly);
