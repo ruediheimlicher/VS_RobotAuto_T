@@ -2,7 +2,7 @@
 //  expo.h
 //  DOG_LCD
 //
-//  Created by Ruedi Heimlicher on 22.11.2013.
+//  Created by Ruedi Heimlicher on 01.03.2023.
 //
 //
 #include <stdint.h>

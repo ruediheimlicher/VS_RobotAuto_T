@@ -13,6 +13,7 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 
+#include "main.h"
 #include <Ticker.h> 
 #include <driver/adc.h>
 #include "elapsedMillis.h"
@@ -38,7 +39,11 @@ LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4,5, 6, 16, 11, 12, 13, 14, POSI
 
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSans12pt7b.h>
-static const unsigned char PROGMEM logo16_glcd_bmp[] =
+
+# include "display.h"
+
+// ASCII: https://www.i8086.de/zeichensatz/code-page-437.html
+static const uint8_t PROGMEM logo16_glcd_bmp[] =
 { B00000000, B11000000,
   B00000001, B11000000,
   B00000001, B11000000,
@@ -55,10 +60,22 @@ static const unsigned char PROGMEM logo16_glcd_bmp[] =
   B01111100, B11110000,
   B01110000, B01110000,
   B00000000, B00110000 };
-//#define SSD1305_128_64
-//SSD1306Wire display(0x3c, SDA, SCL); 
+
 
 #define OLED_RESET -1
+
+uint8_t char_height_mul = 0;
+uint8_t char_width_mul = 0;
+
+ uint8_t       curr_levelarray[8];
+ uint8_t       curr_expoarray[8];
+ uint8_t       curr_mixarray[8];
+ uint8_t       curr_funktionarray[8];
+ uint8_t       curr_statusarray[8];
+ uint8_t       curr_ausgangarray[8];
+
+ uint8_t       curr_devicearray[8];
+
 
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
@@ -205,7 +222,8 @@ uint16_t tastaturmittel = 0;
 uint16_t tastaturwert = 0;
 uint16_t ADCwert = 0;
 
-
+//char leerstring[] = {219,219,219,0};
+char leerstring[] = "          \0";
 uint16_t Taste = 0;
 
 uint16_t lcdtest = 0;
@@ -269,6 +287,8 @@ void DebounceSwitch (void)
 
 EEPROMdata_struct EEPROMdata;
 
+
+/*
 typedef struct canal_struct 
 {
   uint16_t lx;
@@ -281,7 +301,7 @@ typedef struct canal_struct
   uint16_t x;
   uint16_t y;
 } canal_struct;
-
+*/
 //Create a struct_message called canaldata
 canal_struct canaldata;
 
@@ -662,11 +682,7 @@ void setup() {
 
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(0, 10);
-  // Display static text
-  //display.setTextSize(2);
-  //display.setFont(&FreeSans9pt7b);
-  display.println("Hello, world!");
+  ;
   //display.fillCircle(display.width()/2, display.height()/2, 10, WHITE);
 
   display.display(); 
@@ -775,6 +791,8 @@ adc1_config_width(ADC_WIDTH_BIT_12);
 //  int erfolg = lcd.begin(COLUMS, ROWS, LCD_5x8DOTS, 21, 22, 400000, 250);
 buttonstatus |= (1<<START_TON);
 //buttonstatus = 13;
+
+sethomescreen();
 }
 
 // OLED functions
@@ -817,37 +835,51 @@ if (firstrun)
   }
  buttonstatus |= (1<<START_TON);
   firstrun = 0;
+
 }
 
 if (displaymillis > displayintervall)
 {
+  refreshhomescreen();
+
+  
+  /*
   // https://en.wikipedia.org/wiki/Code_page_437
   displaymillis = 0;
-  display.clearDisplay();
+  //display.clearDisplay();
+  clearline(10);
   display.setCursor(0,0);
   display.println("RobotAuto_T");
+  clearblock(0,20,60);
   display.setCursor(0,20);
   display.print(lxmittel);
+  clearblock(0,32,60);
   display.setCursor(32,20);
   display.print(canaldata.x);
  
-  display.setCursor(0, 32);
+   display.setCursor(0, 32);
   display.print(lymittel);
-  display.setCursor(32,32);
+  
+   display.setCursor(32,32);
   display.print(canaldata.y);
- 
+  
+ clearblock(100,0,20);
   display.setCursor(100,0);
   display.print(Taste);
    display.setCursor(110,0);
    //buttonstatus = 13;
   display.print(buttonstatus);
   display.display();
+  */
+//drawverticalrect();
+
 }
 
 if (ledmillis > ledintervall)
   {
     ledmillis = 0;
-   
+   ubatt++;
+  drawlevelmeter(110,16,8,32,ubatt%100);
   
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     //Serial.printf("DebouncedState: %d\n",DebouncedState);
