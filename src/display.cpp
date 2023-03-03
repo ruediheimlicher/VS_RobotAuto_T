@@ -283,8 +283,6 @@ void display_write_symbol(const char* symbol)
 						display_write_byte(tmp4);
 					}
 				}
-            
-            
 				display_go_to(col,page);
 				
 				for(counter = 0;counter<char_width_mul;counter++)
