@@ -878,8 +878,8 @@ if (displaymillis > displayintervall)
 if (ledmillis > ledintervall)
   {
     ledmillis = 0;
-   ubatt++;
-  drawlevelmeter(110,16,8,32,ubatt%100);
+    ubatt++;
+    drawlevelmeter(110,16,8,32,ubatt%100);
   
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     //Serial.printf("DebouncedState: %d\n",DebouncedState);
@@ -906,7 +906,7 @@ if (ledmillis > ledintervall)
     //display.drawRect(20,20,30,10,WHITE);
      //display.print(canaldata.lx);
     //display.setCursor(40,30);
-   //display.drawChar(40,35,0x10,WHITE,1,1);
+    //display.drawChar(40,35,0x10,WHITE,1,1);
     //display.drawChar(45,35,0x11,WHITE,1,1);
 
     

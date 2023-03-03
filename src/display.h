@@ -91,10 +91,10 @@ extern  uint16_t  cursorpos[8][8]; // Aktueller screen: werte fuer page und dara
 // 
 extern  uint16_t              updatecounter; // Zaehler fuer Einschalten
 
-extern uint8_t char_x;
-extern uint8_t char_y;
+
 extern uint8_t char_height_mul;
 extern uint8_t char_width_mul;
+
 
 
 void sethomescreen(void);
@@ -113,3 +113,5 @@ void display_write_symbol(const char* symbol);
 
 void drawverticalrect(void);
 void drawlevelmeter(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level);
+
+void pfeilvollrechts(uint8_t x, uint8_t y, uint8_t full);

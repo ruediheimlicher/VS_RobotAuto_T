@@ -11,7 +11,7 @@
 
 
 // Homescreen
- const char titel0[]  = "RC-22 Home";
+ const char titel0[]  = "VSRobotAuto_T";
  const char titel1[]  = "ON-Zeit:";
  const char titel2[]  = "Stoppuhr";
  const char titel3[]  = "Motorzeit";
@@ -23,7 +23,7 @@
  const char *TitelTable[]  = {titel0, titel1, titel2, titel3, titel4, titel5, titel6, titel7};
 
 // Modelle
-char model0[]  = "E-Segler A  ";
+char model0[]  = "Robot_Auto  ";
 char model1[]  = "E-Segler B  ";
 char model2[]  = "Hangsegler A";
 char model3[]  = "Motor A     ";

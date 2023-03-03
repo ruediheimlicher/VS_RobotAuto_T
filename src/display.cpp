@@ -11,9 +11,14 @@
 #include "font.h"
 #include "main.h"
 
+#define linetab 12
 extern uint16_t lxmittel;
 extern uint16_t lymittel;
 extern uint8_t Taste;
+
+uint8_t char_x;
+uint8_t char_y;
+
 extern canal_struct canaldata;
 uint8_t cursortab[10] = {cursortab0,cursortab1,cursortab2,cursortab3,cursortab4,cursortab5,cursortab6,cursortab7,cursortab0,cursortab0};
 uint8_t itemtab[10] = {itemtab0,itemtab1,itemtab2,itemtab3,itemtab4,itemtab5,itemtab6,itemtab7,itemtab0,itemtab0};
@@ -59,9 +64,11 @@ void resetRegister(void)
 
 void sethomescreen(void)
 {
-  clearline(10);
-  display.setCursor(0,0);
-  display.println("RobotAuto_TT");
+  char_x = cursortab0;
+  char_y = linetab;
+  //clearline(10);
+  //display.setCursor(0,0);
+  //display.print(TitelTable[0]);
   clearblock(0,20,60);
   display.setCursor(0,20);
   display.print(lxmittel);
@@ -69,16 +76,16 @@ void sethomescreen(void)
   display.setCursor(32,20);
   display.print(canaldata.x);
  
-   display.setCursor(0, 32);
+  display.setCursor(0, 32);
   display.print(lymittel);
   
-   display.setCursor(32,32);
+  display.setCursor(32,32);
   display.print(canaldata.y);
   
  clearblock(100,0,20);
   display.setCursor(100,0);
   display.print(Taste);
-   display.setCursor(110,0);
+  display.setCursor(110,0);
   display.display();
 }// sethomescreen
 
@@ -86,7 +93,7 @@ void refreshhomescreen(void)
 {
   //clearline(10);
   display.setCursor(0,0);
-  display.println("RobotAuto_TT  T");
+  display.print(TitelTable[0]);
   clearblock(0,20,68);
   display.setCursor(0,20);
   display.print("lx:");
@@ -95,24 +102,26 @@ void refreshhomescreen(void)
   display.setCursor(48,20);
   display.print(canaldata.x);
  
- clearblock(0,32,68);
-   display.setCursor(0, 32);
-   display.print("ly:");
+  clearblock(0,32,68);
+  display.setCursor(0, 32);
+  display.print("ly:");
   display.print(lymittel);
-display.setCursor(64, 32);
-  char pfeil[] = {0x1E,0x1F,0x10,0x04,0x03,0x00};
-  display.print('*');
-  display.print(pfeilvollrechts);
+  //display.setCursor(64, 32);
+  //char pfeil[] = {0x1E,0x1F,0x10,0x04,0x03,0x00};
+  //display.print('*');
+  //display.print(pfeilvollrechts);
+  //display.fillTriangle(10, 50, 14, 54, 10, 58, WHITE);
+  pfeilvollrechts(30,50,1);
   //display.print(0x03,0x00);
-  display.print('*');
+  //display.print('*');
   //clearblock(0,48,60);
-   display.setCursor(48,32);
+  display.setCursor(48,32);
   display.print(canaldata.y);
   
   clearblock(100,0,20);
   display.setCursor(100,0);
   display.print(Taste);
-display.setCursor(110,0);
+  display.setCursor(110,0);
   display.display();
 }// refreshhomescreen
 
@@ -170,7 +179,7 @@ void setsettingscreen(void)
 
    char_y= (cursorpos[0][0] & 0xFF00)>> 10;
    char_x = cursorpos[0][0] & 0x00FF;
-   display_write_symbol(pfeilvollrechts);
+   //display_write_symbol(pfeilvollrechts);
    
    // 2. Zeile Set mit Nummer
    char_y= (posregister[0][2] & 0xFF00)>> 10;
@@ -241,6 +250,11 @@ void display_write_symbol(const char* symbol)
    const char* pointer = symbol;
    uint8_t symboldelay = 2;
    uint8_t count = 0;
+   col=(char_x+DISPLAY_OFFSET);
+   page=char_y;
+   display.print(symbol);
+      return;
+
 	for(col=(char_x+DISPLAY_OFFSET);col<(char_x+(FONT_WIDTH*char_width_mul)+DISPLAY_OFFSET);col=col+char_width_mul)
 	{
 		for (page=char_y;page<(char_y+((FONT_HEIGHT/8)*char_height_mul));page = page +char_height_mul)
@@ -330,8 +344,17 @@ void drawlevelmeter(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level)
 
 
     display.display(); // Update screen with each newly-drawn rectangle
-  
 
+}
 
-
+void pfeilvollrechts(uint8_t x, uint8_t y, uint8_t full)
+{
+  if(full)
+  {
+    display.fillTriangle(x, y, x+4, y+4, x, y+8, WHITE);
+  }
+  else
+  {
+    display.fillTriangle(x, y, x+4, y+4, x, y+8, BLACK);
+  }
 }
