@@ -47,4 +47,35 @@
 #define TASTE08     597
 #define TASTE09     660
 
+// Bits von sendestatus
+#define RUN          0
+#define PAUSE        1
+#define PAKET        2
+#define IMPULS       3
+#define ADC_OK       4
+#define USB_OK       5
+#define ENDEPAKET    7
 
+// bits von programmstatus
+
+#define MOTOR_ON        1
+#define STOP_ON         2
+#define LOCALTASK       3
+#define EXTERNTASK      4
+
+
+// Bits von masterstatus
+#define  USBPRESENT_BIT             4 //  USB eingesteckt
+#define  AKKU_LOW_BIT               5 //  Akku ist low
+#define  TIMEOUT_BIT                6 //  Beep nach ablauf des Timeout
+#define  HALT_BIT                   7 //  Bit 7
+
+#define TIMEOUT   12000             // 2800 ticks fuer 1 minute
+
+// Bits von eepromstatus
+
+
+
+// Bits von displaystatus
+#define UHR_UPDATE         0
+#define BATTERIE_UPDATE    1

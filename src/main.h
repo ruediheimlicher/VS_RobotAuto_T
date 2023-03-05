@@ -22,7 +22,7 @@ typedef struct canal_struct
   uint16_t y;
 } canal_struct;
 
-
+//uint8_t       curr_model; // aktuelles modell
 
 
 

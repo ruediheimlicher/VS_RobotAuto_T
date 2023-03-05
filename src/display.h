@@ -9,12 +9,14 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-//#include <Fonts/FreeSans9pt7b.h>
-//#include <Fonts/FreeSans12pt7b.h>
+#include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeSans12pt7b.h>
 
 
 
 extern Adafruit_SSD1306 display;
+
+#define DISPLAY_OFFSET 2
 
 #define cursortab0 2
 #define cursortab1 26
@@ -61,7 +63,7 @@ extern  uint8_t       curr_mixkanalarray[8];
 extern  uint8_t       curr_screen;
 extern  uint8_t       curr_page; // aktuelle page
 extern  uint8_t       curr_col; // aktuelle colonne
-extern  uint8_t       curr_model; // aktuelles modell
+extern uint8_t       curr_model; // aktuelles modell
 
 extern  uint8_t       curr_kanal; // aktueller kanal
 
@@ -81,12 +83,9 @@ extern  uint8_t       last_cursorspalte; // letzte colonne des cursors
 extern  uint16_t      blink_cursorpos;
 
 
-void clearblock(uint8_t startx, uint8_t starty, uint8_t range);
+void clearblock(uint8_t startx, uint8_t starty, uint8_t rangex,uint8_t rangey);
 void clearline(uint8_t starty);
 
-extern  uint16_t  posregister[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer Menueintraege (hex). geladen aus progmem
-
-extern  uint16_t  cursorpos[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer cursor (hex). geladen aus progmem
 
 // 
 extern  uint16_t              updatecounter; // Zaehler fuer Einschalten
@@ -96,7 +95,7 @@ extern uint8_t char_height_mul;
 extern uint8_t char_width_mul;
 
 
-
+uint8_t refresh_screen(void);
 void sethomescreen(void);
 void refreshhomescreen(void);
 
@@ -106,12 +105,19 @@ void setcanalscreen(void);
 void settrimmscreen(void);
 void setmixscreen(void);
 void setsavescreen(void);
-
+void display_setcursorblink(uint8_t zeit);
 void display_write_str(const char *str, uint8_t prop);
 void display_write_byte(unsigned char data);
 void display_write_symbol(const char* symbol);
-
+void display_write_stopzeit(uint8_t sekunde,uint8_t minute,uint8_t prop);
+void display_write_laufzeit(uint8_t sekunde,uint8_t minute);
 void drawverticalrect(void);
+
+void putint(uint8_t zahl);
+void putint2(uint8_t zahl);
+void putint12(uint8_t zahl);
+void puthex(uint8_t zahl);
+
 void drawlevelmeter(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level);
 
 void pfeilvollrechts(uint8_t x, uint8_t y, uint8_t full);

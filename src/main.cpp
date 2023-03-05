@@ -36,36 +36,69 @@ LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4,5, 6, 16, 11, 12, 13, 14, POSI
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-
-#include <Fonts/FreeSans9pt7b.h>
-#include <Fonts/FreeSans12pt7b.h>
+//
+//#include <Fonts/FreeSans9pt7b.h>
+//#include <Fonts/FreeSans12pt7b.h>
 
 # include "display.h"
 
 // ASCII: https://www.i8086.de/zeichensatz/code-page-437.html
-static const uint8_t PROGMEM logo16_glcd_bmp[] =
-{ B00000000, B11000000,
-  B00000001, B11000000,
-  B00000001, B11000000,
-  B00000011, B11100000,
-  B11110011, B11100000,
-  B11111110, B11111000,
-  B01111110, B11111111,
-  B00110011, B10011111,
-  B00011111, B11111100,
-  B00001101, B01110000,
-  B00011011, B10100000,
-  B00111111, B11100000,
-  B00111111, B11110000,
-  B01111100, B11110000,
-  B01110000, B01110000,
-  B00000000, B00110000 };
 
 
 #define OLED_RESET -1
 
+#define TASTEOK            1
+#define AKTIONOK           2
+#define UPDATEOK           3
+
+
+elapsedMillis              zeitintervall;
+uint8_t           sekundencounter = 0;
+
+elapsedMicros sinceusb;
+
+elapsedMicros sincelastbeepA;
+
+elapsedMillis sincelastseccond;
+elapsedMillis sinceimpulsstart;
+
+
 uint8_t char_height_mul = 0;
 uint8_t char_width_mul = 0;
+
+uint16_t stopsekunde=0;
+uint16_t stopminute=0;
+uint16_t motorsekunde=0;
+uint16_t motorminute=0;
+uint8_t   motorstunde=0;
+
+uint16_t sendesekunde=0;
+uint16_t sendeminute=0;
+uint8_t sendestunde=0;
+
+uint8_t    curr_model; // aktuelles modell
+uint8_t    speichermodel=0;
+uint8_t    curr_kanal=0; // aktueller kanal
+uint8_t    curr_impuls=0; // aktueller impuls
+
+uint8_t    curr_setting=0; // aktuelles Setting fuer Modell
+uint8_t   speichersetting=0;
+
+uint8_t    curr_trimmkanal=0; // aktueller  Kanal fuerTrimmung
+uint8_t    curr_trimmung=0; // aktuelle  Trimmung fuer Trimmkanal
+
+
+uint8_t    curr_screen = 0; // aktueller screen
+uint8_t    last_screen=0; // letzter screen
+
+uint8_t    curr_page=7; // aktuelle page
+uint8_t    curr_col=0; // aktuelle colonne
+
+uint8_t    curr_cursorzeile=0; // aktuelle zeile des cursors
+uint8_t    curr_cursorspalte=0; // aktuelle colonne des cursors
+uint8_t    last_cursorzeile=0; // letzte zeile des cursors
+uint8_t    last_cursorspalte=0; // letzte colonne des cursors
+
 
  uint8_t       curr_levelarray[8];
  uint8_t       curr_expoarray[8];
@@ -76,6 +109,7 @@ uint8_t char_width_mul = 0;
 
  uint8_t       curr_devicearray[8];
 
+uint16_t    blink_cursorpos=0xFFFF;
 
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
@@ -83,7 +117,7 @@ Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 typedef void (*Demo)(void);
 int counter = 1;
 // end OLED
-#define JOYSICK_B
+#define JOYSTICK_B
 
 #define ESPOK 0
 
@@ -148,7 +182,9 @@ uint16_t maxwinkel = 180;
 uint16_t grenzex = servomittearray[KANAL_X]; // wert fuer Eichung
 uint16_t grenzey = servomittearray[KANAL_Y];
 
-
+uint8_t   servostatus=0;
+uint8_t   programmstatus = 0;
+uint8_t   tastaturstatus = 0;
 uint8_t buttonstatus = 0;
 uint8_t tonindex = 0;
 void playTon(int ton);
@@ -166,6 +202,8 @@ elapsedMillis ledmillis;
 elapsedMillis displaymillis;
 
 int displayintervall = 100;
+uint16_t          updatecounter=0; // Zaehler fuer Einschalten
+uint16_t          manuellcounter=0;
 
 // debounce
 Ticker debouncetimer;
@@ -198,7 +236,7 @@ taste3: GPIO5
 #define BOARD_TASTE 33
 #define BOARD_MINI 1
 #define BOARD_NODE 0
-volatile uint8_t boardstatus = 0;
+uint8_t boardstatus = 0;
 uint16_t tastaturmittelwertarray[AVERAGE];
 uint8_t analogtastaturstatus = 0;
 uint8_t TastaturCount=0;
@@ -228,15 +266,13 @@ uint16_t Taste = 0;
 
 uint16_t lcdtest = 0;
 
-
  uint8_t tastenstatus() // bitmuster aller Tasten
  {
    uint8_t returnstatus = 0;
  if(digitalRead(TASTE0) == 0)
    {
-    
-        tastencounter++;
-     returnstatus |= (1<<0);
+      tastencounter++;
+      returnstatus |= (1<<0);
    }
   
  if(digitalRead(TASTE1) == 0)
@@ -548,6 +584,7 @@ void tastenfunktion(uint16_t Tastenwert)
                case 0://
                { 
                   Serial.printf("\tTaste 0\n");
+                  
                   break;
                   // Blinken auf C2
                   
@@ -558,9 +595,13 @@ void tastenfunktion(uint16_t Tastenwert)
                case 1: 
                {
                   Serial.printf("\tTaste 1\n");
-               
-                  
-               }
+                if (tastaturstatus & (1<<AKTIONOK))
+                {
+                  programmstatus ^= (1<<MOTOR_ON);
+                  tastaturstatus &=  ~(1<<AKTIONOK);
+                }
+                  manuellcounter=0;
+                } // case 1
                   break;
                   
                case 2:     // up                             //   Menu vorwaertsschalten   
@@ -678,13 +719,13 @@ void setup() {
     for(;;); // Don't proceed, loop forever
   }
   delay(2000);
+  
   display.clearDisplay();
-
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  ;
+  
   //display.fillCircle(display.width()/2, display.height()/2, 10, WHITE);
-
+  
   display.display(); 
  
 // end OLED
@@ -792,7 +833,8 @@ adc1_config_width(ADC_WIDTH_BIT_12);
 buttonstatus |= (1<<START_TON);
 //buttonstatus = 13;
 
-sethomescreen();
+
+
 }
 
 // OLED functions
@@ -834,8 +876,55 @@ if (firstrun)
     Serial.println("add peer 2 OK");
   }
  buttonstatus |= (1<<START_TON);
+ sethomescreen();
   firstrun = 0;
 
+}
+
+if (zeitintervall > 500)
+{
+  sekundencounter++;
+      if (sekundencounter%2)
+      {
+        Serial.printf("refresh_screen sendesekunde: %d\n",sendesekunde);
+        sendesekunde++;
+
+
+      }
+
+  if (manuellcounter && (blink_cursorpos < 0xFFFF))
+  {
+    display_setcursorblink(updatecounter);
+  }
+  updatecounter++;
+  manuellcounter++;               
+  //Serial.printf("send usb: pot0 %d\n",pot0);
+      
+  //digitalWrite(OSZI_PULS_A, !digitalRead(OSZI_PULS_A));
+  // sendeminute
+  if (sendesekunde == 60)
+         {
+            sendeminute++;
+            sendesekunde = 0;
+            
+            
+            if (curr_screen == 0)
+            {
+               Serial.printf("refresh_screen sendeminute: %d\n",sendeminute);
+               servostatus &=  ~(1<<RUN); 
+               
+               refresh_screen();
+               servostatus |=  (1<<RUN); 
+               //display.setCursor(120,12);
+               //display_write_stopzeit(sendesekunde, sendeminute, 1);
+               display.display();
+            }
+            
+         }
+
+
+
+  zeitintervall = 0;
 }
 
 if (displaymillis > displayintervall)
@@ -850,10 +939,10 @@ if (displaymillis > displayintervall)
   clearline(10);
   display.setCursor(0,0);
   display.println("RobotAuto_T");
-  clearblock(0,20,60);
+  clearblock(0,20,60,8);
   display.setCursor(0,20);
   display.print(lxmittel);
-  clearblock(0,32,60);
+  clearblock(0,32,60,8);
   display.setCursor(32,20);
   display.print(canaldata.x);
  
@@ -863,7 +952,7 @@ if (displaymillis > displayintervall)
    display.setCursor(32,32);
   display.print(canaldata.y);
   
- clearblock(100,0,20);
+ clearblock(100,0,20,8);
   display.setCursor(100,0);
   display.print(Taste);
    display.setCursor(110,0);
@@ -875,11 +964,12 @@ if (displaymillis > displayintervall)
 
 }
 
+
 if (ledmillis > ledintervall)
   {
     ledmillis = 0;
     ubatt++;
-    drawlevelmeter(110,16,8,32,ubatt%100);
+    drawlevelmeter(120, 12,8,48,ubatt%100);
   
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     //Serial.printf("DebouncedState: %d\n",DebouncedState);

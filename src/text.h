@@ -13,19 +13,19 @@
 // Homescreen
  const char titel0[]  = "VSRobotAuto_T";
  const char titel1[]  = "ON-Zeit:";
- const char titel2[]  = "Stoppuhr";
- const char titel3[]  = "Motorzeit";
- const char titel4[]  = "Menu";
- const char titel5[]  = "Set";
- const char titel6[]  = "Akku\0";
+ const char titel2[]  = "Stopuhr";
+ const char titel3[]  = "Akku T";
+ const char titel4[]  = "Akku R";
+ const char titel5[]  = "Menu";
+ const char titel6[]  = "A";
  const char titel7[]  = "D\0";
 
  const char *TitelTable[]  = {titel0, titel1, titel2, titel3, titel4, titel5, titel6, titel7};
 
 // Modelle
-char model0[]  = "Robot_Auto  ";
-char model1[]  = "E-Segler B  ";
-char model2[]  = "Hangsegler A";
+char model0[]  = "Auto PPM    ";
+char model1[]  = "Auto Stepper";
+char model2[]  = "            ";
 char model3[]  = "Motor A     ";
 char model4[]  = "Motor B     ";
 char model5[]  = "AA\0        ";
@@ -35,12 +35,12 @@ char model7[]  = "CC\0        ";
 char *ModelTable[]  = {model0, model1, model2, model3, model4, model5, model6, model7};
 
 
-
+// datascreen
 
 
 // Settingscreen
 const char menutitel[]  = "Settings";
-const char model[]  = "Modell";
+const char model[]  = "Device";
 const char setting[]  = "Set";
 const char kanal[]  = "Kanal";
 

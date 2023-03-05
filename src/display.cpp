@@ -12,12 +12,23 @@
 #include "main.h"
 
 #define linetab 12
+
+
 extern uint16_t lxmittel;
 extern uint16_t lymittel;
 extern uint8_t Taste;
+extern uint16_t stopsekunde;
+extern uint16_t stopminute;
+extern uint8_t sendesekunde;
+extern uint8_t sendeminute;
+//extern uint8_t       curr_model; // aktuelles modell
 
 uint8_t char_x;
 uint8_t char_y;
+uint16_t  posregister[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer Menueintraege (hex). geladen aus progmem
+
+uint16_t  cursorpos[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer cursor (hex). geladen aus progmem
+
 
 extern canal_struct canaldata;
 uint8_t cursortab[10] = {cursortab0,cursortab1,cursortab2,cursortab3,cursortab4,cursortab5,cursortab6,cursortab7,cursortab0,cursortab0};
@@ -25,11 +36,11 @@ uint8_t itemtab[10] = {itemtab0,itemtab1,itemtab2,itemtab3,itemtab4,itemtab5,ite
 
 
 // https://forum.arduino.cc/t/clearing-a-line-on-oled-adafruit-ssd1306/369985/8
-void clearblock(uint8_t startx, uint8_t starty, uint8_t range)
+void clearblock(uint8_t startx, uint8_t starty, uint8_t rangex,uint8_t rangey)
 {
-for (uint8_t y=starty; y<=starty+6; y++)
+for (uint8_t y=starty; y<=starty+rangey; y++)
       {
-       for (uint8_t x=startx; x<startx + range; x++)
+       for (uint8_t x=startx; x<startx + rangex; x++)
        {
         display.drawPixel(x, y, BLACK); 
        }
@@ -64,64 +75,129 @@ void resetRegister(void)
 
 void sethomescreen(void)
 {
-  char_x = cursortab0;
-  char_y = linetab;
+  resetRegister();
+  posregister[0][0] = 0   | (2 << 10); // Name Modell
+  posregister[0][1] = 98  | (1 << 10);// Laufzeit
+   blink_cursorpos=0xFFFF;
+   posregister[0][0] = itemtab[5] | (1 << 10);// Laufzeit Anzeige
+   
+   
+   posregister[1][0] = (0) | (32 << 10); // Text Motorzeit
+   posregister[1][1] = (0) | (42 << 10); // Anzeige Motorzeit
+   
+   
+   posregister[2][0] = (58) | (32 << 10); // Text Stoppuhr
+   posregister[2][1] = (58) | (42 << 10); // Anzeige Stoppuhr
+   Serial.printf("posregister 2 0: %d posregister 2 1: %d\n",posregister[2][0], posregister[2][1]);
+   
+   posregister[3][0] = (60+DISPLAY_OFFSET) | (0x07 << 10); // Text Akku
+   posregister[3][1] = (84+DISPLAY_OFFSET) | (0x08 << 10); // Anzeige Akku
+
+   posregister[4][0] = (0+DISPLAY_OFFSET) | (2 << 10); // Name Modell
+   posregister[4][1] = (80+DISPLAY_OFFSET) | (3 << 10); // Text Setting
+   posregister[4][2] = (100+DISPLAY_OFFSET) | (3 << 10); // Anzeige Setting
+
+   cursorpos[0][1] = cursortab[0] |    (8 << 10); //  cursorpos fuer Menu
+
+  
+
+  char_x = DISPLAY_OFFSET;
+  char_y = 0*linetab;
+
+  display.setCursor(char_x,char_y);
+    //display.setCursor(0,0);
+  display.print(TitelTable[0]);
   //clearline(10);
-  //display.setCursor(0,0);
-  //display.print(TitelTable[0]);
-  clearblock(0,20,60);
-  display.setCursor(0,20);
-  display.print(lxmittel);
-  clearblock(0,32,60);
-  display.setCursor(32,20);
-  display.print(canaldata.x);
- 
-  display.setCursor(0, 32);
-  display.print(lymittel);
+  char_y = 1*linetab;
+  display.setCursor(char_x,char_y);
+  //display.print(ModelTable[0]); // Name Modell
+  display_write_str(ModelTable[curr_model],2);
+
   
-  display.setCursor(32,32);
-  display.print(canaldata.y);
-  
- clearblock(100,0,20);
-  display.setCursor(100,0);
-  display.print(Taste);
-  display.setCursor(110,0);
   display.display();
 }// sethomescreen
 
+
+uint8_t refresh_screen(void)
+{
+   display.clearDisplay();
+   uint8_t fehler=0;
+   uint16_t cursorposition = cursorpos[curr_cursorzeile][curr_cursorspalte];
+   fehler=1;
+   //Serial.printf("****************  refresh_screen: %d\n",curr_screen);
+  // switch curr_screen
+return 0;
+}
+
 void refreshhomescreen(void)
 {
+  // laufzeit
+  char_x = posregister[0][1] & 0x00FF;
+  char_y = (posregister[0][1] & 0xFF00)>>10;
+  clearblock(char_x,char_y,68,8);
+  display.setCursor(char_x,char_y);
+  display_write_laufzeit(sendesekunde,sendeminute);
+
+  char_x = DISPLAY_OFFSET;
+  char_y = 0*linetab;
+
   //clearline(10);
-  display.setCursor(0,0);
+  display.setCursor(char_x,char_y);
   display.print(TitelTable[0]);
-  clearblock(0,20,68);
-  display.setCursor(0,20);
-  display.print("lx:");
+  //clearblock(0,20,68,8);
+  char_y = 1*linetab;
+  display.setCursor(char_x,char_y);
+  display_write_str(ModelTable[curr_model],2);
+  
+
+  // Stoppuhrtext schreiben
+  char_x = (posregister[1][0] & 0x00FF);
+  char_y = (posregister[1][0] & 0xFF00)>> 10;
+  //Serial.printf("charx: %d chary: %d\n",char_x, char_y);
+  display.setCursor(char_x,char_y);
+  display_write_str(TitelTable[2],1);
+
+  // Stoppzeit schreiben
+  char_y= (posregister[1][1] & 0xFF00)>> 10;
+  char_x = (posregister[1][1] & 0x00FF);
+  clearblock(char_x,char_y,62,20);
+  display.setCursor(char_x,char_y);
+  display_write_stopzeit(stopsekunde,stopminute, 1);
+  
+  
+  clearblock(18,55,100,8);
+  display.setCursor(0,57);
+   
   display.print(lxmittel);
-  //clearblock(50,20,60);
-  display.setCursor(48,20);
-  display.print(canaldata.x);
- 
-  clearblock(0,32,68);
+  
+  display.setCursor(30,57);
+  putint(canaldata.x);
+
+  display.setCursor(52,57);
+  display.print(lymittel);
+  display.setCursor(82,57);
+  puthex(canaldata.y);
+  
+
+ /*
+  clearblock(0,32,68,8);
   display.setCursor(0, 32);
   display.print("ly:");
   display.print(lymittel);
-  //display.setCursor(64, 32);
-  //char pfeil[] = {0x1E,0x1F,0x10,0x04,0x03,0x00};
-  //display.print('*');
-  //display.print(pfeilvollrechts);
-  //display.fillTriangle(10, 50, 14, 54, 10, 58, WHITE);
+
   pfeilvollrechts(30,50,1);
   //display.print(0x03,0x00);
   //display.print('*');
-  //clearblock(0,48,60);
+  //clearblock(0,48,60,8);
   display.setCursor(48,32);
   display.print(canaldata.y);
-  
-  clearblock(100,0,20);
-  display.setCursor(100,0);
+  */
+/*
+  clearblock(90,0,10,8);
+  display.setCursor(90,0);
   display.print(Taste);
-  display.setCursor(110,0);
+  //display.setCursor(110,0);
+  */
   display.display();
 }// refreshhomescreen
 
@@ -224,7 +300,18 @@ void setsettingscreen(void)
 
 void display_write_str(const char *str, uint8_t prop)
 {
-      display.write(str);
+  if(prop == 2)
+  {
+    display.setTextSize(2);
+    display.write(str);
+    display.setTextSize(1);
+  }
+  else
+  {
+    display.setTextSize(1);
+    display.write(str);
+  }
+      
 
 }
 
@@ -320,6 +407,25 @@ void display_write_symbol(const char* symbol)
 	return;
 }
 
+void display_setcursorblink(uint8_t zeit)
+{
+   uint16_t cursorposition = cursorpos[curr_cursorzeile][curr_cursorspalte];
+   char_y= (cursorposition & 0xFF00)>> 10;
+   char_x = cursorposition & 0x00FF;
+      if (zeit%2) // gerade
+      {
+        pfeilvollrechts(char_x, char_y, 1);
+         //display_write_symbol(pfeilwegrechts);
+      }
+      else
+      {
+        pfeilvollrechts(char_x, char_y, 0);
+         //display_write_symbol(pfeilvollrechts);
+      }
+
+   
+}
+
 void drawverticalrect(void) 
 {
   display.clearDisplay();
@@ -340,11 +446,7 @@ void drawlevelmeter(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level)
       display.fillRect(x+1,y+1,w-2,h-anzeige-2,0); // oberen teil leeren
       display.fillRect(x,y+h-anzeige,w,anzeige,WHITE);
 
-
-
-
     display.display(); // Update screen with each newly-drawn rectangle
-
 }
 
 void pfeilvollrechts(uint8_t x, uint8_t y, uint8_t full)
@@ -357,4 +459,165 @@ void pfeilvollrechts(uint8_t x, uint8_t y, uint8_t full)
   {
     display.fillTriangle(x, y, x+4, y+4, x, y+8, BLACK);
   }
+}
+
+void putint(uint8_t zahl)
+{
+  char string[4];
+  int8_t i;                             // schleifenzähler
+  int8_t leer = 0; 
+  if(zahl < 100)
+  {
+    if (zahl < 10)
+    {
+      leer = 2;
+    }
+    else
+    {
+       leer = 1;
+    }
+  }
+  string[3]='\0';                       // String Terminator
+  for(i=2; i>=0; i--) 
+  {
+    if (i < leer)
+    {
+      string[i]=' '; 
+    }
+    else
+    {
+    string[i]=(zahl % 10) +'0';         // Modulo rechnen, dann den ASCII-Code von '0' addieren
+    }
+    zahl /= 10;
+  }
+  display.print(string);
+}
+
+void putint2(uint8_t zahl)
+{
+  char string[3];
+  int8_t i;                             // schleifenzähler
+  int8_t leer = 0; 
+  
+    if (zahl < 10)
+    {
+      leer = 2;
+    }
+    else
+    {
+       leer = 1;
+    }
+  
+  string[2]='\0';                       // String Terminator
+  for(i=1; i>=0; i--) 
+  {
+    
+    if (i < leer)
+    {
+      string[i]=' '; 
+    }
+    else
+    {
+    string[i]=(zahl % 10) +'0';         // Modulo rechnen, dann den ASCII-Code von '0' addieren
+    }
+    zahl /= 10;
+
+  }
+  display.print(string);
+}
+
+void putint12(uint16_t zahl)
+{
+  char string[5];
+  int8_t i;                             // schleifenzähler
+  int8_t leer = 0; 
+  if(zahl < 100)
+  {
+    if (zahl < 10)
+    {
+      leer = 2;
+    }
+    else
+    {
+       leer = 1;
+    }
+  }
+  string[4]='\0';                       // String Terminator
+  for(i=3; i>=0; i--) 
+  {
+    if (i < leer)
+    {
+      string[i]=' '; 
+    }
+    else
+    {
+    string[i]=(zahl % 10) +'0';         // Modulo rechnen, dann den ASCII-Code von '0' addieren
+    }
+    zahl /= 10;
+  }
+  display.print(string);
+}
+
+void puthex(uint8_t zahl)
+{
+  char string[3];
+   uint8_t l,h;                             // schleifenzähler
+   
+   string[2]='\0';                       // String Terminator
+   l=(zahl % 16);
+   if (l<10)
+   string[1]=l +'0';  
+   else
+   {
+      l%=10;
+      string[1]=l + 'A'; 
+      
+   }
+   zahl /=16;
+   h= zahl % 16;
+   if (h<10)
+   string[0]=h +'0';  
+   else
+   {
+      h%=10;
+      string[0]=h + 'A'; 
+   }
+  display.print(string); 
+}
+
+
+void display_write_stopzeit(uint8_t sekunde,uint8_t minute,uint8_t prop)
+{
+  
+   
+   char tempbuffer[6]={};
+   tempbuffer[0] =minute/10+'0';
+   tempbuffer[1] =minute%10+'0';
+   tempbuffer[2] =':';
+   tempbuffer[3] =sekunde/10+'0';
+   tempbuffer[4] =sekunde%10+'0';
+   tempbuffer[5] = '\0';
+   display.setTextSize(2);
+   //display.setFont(&FreeSans9pt7b);
+   display.print(tempbuffer);
+   display.setTextSize(1);
+   
+}
+void display_write_laufzeit(uint8_t sekunde,uint8_t minute)
+{
+  display.setTextSize(1);
+  
+   
+   char tempbuffer[6]={};
+   tempbuffer[0] =minute/10+'0';
+   tempbuffer[1] =minute%10+'0';
+   tempbuffer[2] =':';
+   tempbuffer[3] =sekunde/10+'0';
+   tempbuffer[4] =sekunde%10+'0';
+   tempbuffer[5] = '\0';
+   display.setTextSize(1);
+   //display.setFont(&FreeSans9pt7b);
+   display.print(tempbuffer);
+   
+   
 }
