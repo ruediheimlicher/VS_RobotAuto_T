@@ -62,14 +62,18 @@ for (uint8_t y=starty; y<=starty+6; y++)
 
 void resetRegister(void)
 {
+  //Serial.printf("resetRegister Start\n");
    uint8_t i=0,k=0;
    for(i=0;i<8;i++)
    {
+      //Serial.printf("resetRegister i: %d\n",i);
       for (k=0;k<8;k++)
       {
+        //Serial.printf("resetRegister k: %d\n",k);
          posregister[i][k]=0xFFFF;
       }
    }
+   Serial.printf("resetRegister End\n");
 }
 
 
@@ -126,6 +130,23 @@ uint8_t refresh_screen(void)
    fehler=1;
    //Serial.printf("****************  refresh_screen: %d\n",curr_screen);
   // switch curr_screen
+    switch (curr_screen)
+   {
+         
+      case HOMESCREEN: // homescreen
+      {
+          //Serial.printf("refresh_screen: homescreen\n");
+          refreshhomescreen();
+      }break;
+
+      case SETTINGSCREEN: // Settingscreen
+      {
+          //Serial.printf("refresh_screen: settingscreen\n");
+          refreshsettingscreen();    
+
+      }break;
+   } // end switch
+
 return 0;
 }
 
@@ -168,7 +189,7 @@ void refreshhomescreen(void)
   clearblock(18,55,100,8);
   display.setCursor(0,57);
    
-  display.print(lxmittel);
+  putint12(lxmittel);
   
   display.setCursor(30,57);
   putint(canaldata.x);
@@ -176,7 +197,7 @@ void refreshhomescreen(void)
   display.setCursor(52,57);
   display.print(lymittel);
   display.setCursor(82,57);
-  puthex(canaldata.y);
+  putint(canaldata.y);
   
 
  /*
@@ -198,20 +219,25 @@ void refreshhomescreen(void)
   display.print(Taste);
   //display.setCursor(110,0);
   */
+uint16_t levelprozent = canaldata.x*100/255;
+//Serial.printf("canaldata.x: %d levelprozent: %d\n",canaldata.x,levelprozent);
+ drawlevelmeter(120, 12,8,48,levelprozent);
   display.display();
 }// refreshhomescreen
 
 void setsettingscreen(void)
 {
-  // Serial.printf("setsettingscreen start\n");
+  //Serial.printf("setsettingscreen start\n");
+ 
    
-   resetRegister();
+  resetRegister();
+ //Serial.printf("setsettingscreen nach resetregister\n");
    blink_cursorpos=0xFFFF;
-   
+  
   
    // 2. Zeile
    posregister[0][0] =  itemtab[0] |    (2 << 10); //Modellname
-   posregister[0][1] =  itemtab[0] |    (2 << 10); //
+   posregister[0][1] =  itemtab[0] |    (98 << 10); //
 
    posregister[0][2] =  itemtab[5] |    (3 << 10); // settingtext
    posregister[0][3] =  itemtab[7] |    (3 << 10); // settingnummer
@@ -234,6 +260,108 @@ void setsettingscreen(void)
    cursorpos[4][0] = cursortab[0] |    (7 << 10);  // cursorpos fuer zuteilung
   
    
+
+   char_x=itemtab[0];
+   char_y = 1;
+   char_height_mul = 1;
+   char_width_mul = 1;
+   display_write_str(SettingTable[0],1);
+   char_height_mul = 2;
+   char_width_mul = 1;
+   
+   // Modell Name
+   
+   //display_write_prop_str(char_y,char_x,0,menubuffer,2);
+    // laufzeit
+  char_x = posregister[0][1] & 0x00FF;
+  char_y = (posregister[0][1] & 0xFF00)>>10;
+  clearblock(char_x,char_y,68,8);
+  display.setCursor(char_x,char_y);
+  display_write_laufzeit(sendesekunde,sendeminute);
+
+
+   char_y= (posregister[0][0] & 0xFF00)>> 10;
+   char_x = posregister[0][0] & 0x00FF;
+
+   display_write_str(ModelTable[curr_model],1);
+   char_height_mul = 2;
+   char_width_mul = 1;
+
+   char_y= (cursorpos[0][0] & 0xFF00)>> 10;
+   char_x = cursorpos[0][0] & 0x00FF;
+   //display_write_symbol(pfeilvollrechts);
+   
+   // 2. Zeile Set mit Nummer
+   char_y= (posregister[0][2] & 0xFF00)>> 10;
+   char_x = posregister[0][2] & 0x00FF;
+   
+   char_height_mul = 1;
+   display_write_str(SettingTable[2],2);
+   
+
+   // Kanal-Zeile
+   char_y= (posregister[1][0] & 0xFF00)>> 10;
+   char_x = posregister[1][0] & 0x00FF;
+   //char_x=0;
+   display_write_str(SettingTable[3],2);
+   
+   char_y= (posregister[1][1] & 0xFF00)>> 10;
+   char_x = posregister[1][1] & 0x00FF;
+//   display_write_int(curr_kanal,2);
+
+   
+   // Mix-Zeile
+   char_y= (posregister[2][0] & 0xFF00)>> 10;
+   char_x = posregister[2][0] & 0x00FF;
+   //char_x=0;
+   display_write_str(SettingTable[4],2);
+   
+   // Zuteilung-Zeile
+   char_y= (posregister[3][0] & 0xFF00)>> 10;
+   char_x = posregister[3][0] & 0x00FF;
+   //char_x=0;
+   display_write_str(SettingTable[5],2);
+ 
+   // Output-Zeile
+   char_y= (posregister[4][0] & 0xFF00)>> 10;
+   char_x = posregister[4][0] & 0x00FF;
+   //char_x=0;
+   display_write_str(SettingTable[6],2);
+   
+   //Serial.printf("setsettingscreen end\n");
+} // setSettingscreen
+
+void refreshsettingscreen(void)
+{
+  //resetRegister();
+  blink_cursorpos=0xFFFF;
+
+  //Serial.printf("refreshsettingscreen start\n");
+  posregister[0][0] = 0   | (2 << 10); // Name Modell
+  posregister[0][1] = 98  | (1 << 10);// Laufzeit
+ 
+   posregister[0][2] =  itemtab[5] |    (3 << 10); // settingtext
+   posregister[0][3] =  itemtab[7] |    (3 << 10); // settingnummer
+   
+   posregister[1][0] =  itemtab[0] |    (32 << 10); // Kanaltext
+   
+   posregister[2][0] =  itemtab[0] |    (42 << 10); // mixtext
+
+   posregister[3][0] =  itemtab[0] |    (6 << 10); // Zuteilungtext
+ 
+   posregister[4][0] =  itemtab[0] |    (7 << 10); // Zuteilungtext
+   
+   cursorpos[0][0] = cursortab[0] |    (2 << 10); // modellcursor lo: tab hi: page
+   // cursorpos fuer model zeile/colonne
+   
+   cursorpos[0][1] = cursortab[5] |    (3 << 10); //  cursorpos fuer setting
+   cursorpos[1][0] = cursortab[0] |    (4 << 10);  // cursorpos fuer kanal
+   cursorpos[2][0] = cursortab[0] |    (5 << 10);  // cursorpos fuer mix
+   cursorpos[3][0] = cursortab[0] |    (6 << 10);  // cursorpos fuer zuteilung
+   cursorpos[4][0] = cursortab[0] |    (7 << 10);  // cursorpos fuer zuteilung
+  
+   
+
    char_x=itemtab[0];
    char_y = 1;
    char_height_mul = 1;
@@ -293,10 +421,9 @@ void setsettingscreen(void)
    char_x = posregister[4][0] & 0x00FF;
    //char_x=0;
    display_write_str(SettingTable[6],2);
-   
-   //Serial.printf("setsettingscreen end\n");
-} // setSettingscreen
-
+   display.display();
+   //Serial.printf("refreshsettingscreen end\n");
+}
 
 void display_write_str(const char *str, uint8_t prop)
 {
@@ -442,7 +569,7 @@ void drawverticalrect(void)
 void drawlevelmeter(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level)
 {
       display.drawRect(x, y, w, h, WHITE);
-      uint8_t anzeige = level*h/100;
+      uint16_t anzeige = level*h/100;
       display.fillRect(x+1,y+1,w-2,h-anzeige-2,0); // oberen teil leeren
       display.fillRect(x,y+h-anzeige,w,anzeige,WHITE);
 

@@ -52,6 +52,7 @@ const char ausgang[]  = "Ausgang";
 const char *SettingTable[]  = {menutitel, model, setting, kanal,  mix, zuteilung,ausgang};
 
 
+
 // Kanalscreen
 const char kanaltitel[]  = "Kan:";
 const char richtung[]  = "Ri:";

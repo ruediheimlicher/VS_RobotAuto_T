@@ -18,6 +18,14 @@ extern Adafruit_SSD1306 display;
 
 #define DISPLAY_OFFSET 2
 
+#define HOMESCREEN      0
+#define SETTINGSCREEN   1
+#define KANALSCREEN     2
+#define LEVELSCREEN     3
+#define EXPOSCREEN      4
+#define MIXSCREEN       5
+
+
 #define cursortab0 2
 #define cursortab1 26
 #define cursortab2 46
@@ -98,8 +106,9 @@ extern uint8_t char_width_mul;
 uint8_t refresh_screen(void);
 void sethomescreen(void);
 void refreshhomescreen(void);
-
+void resetRegister(void);
 void setsettingscreen(void);
+void refreshsettingscreen(void);
 void setausgangscreen(void);
 void setcanalscreen(void);
 void settrimmscreen(void);
@@ -115,7 +124,7 @@ void drawverticalrect(void);
 
 void putint(uint8_t zahl);
 void putint2(uint8_t zahl);
-void putint12(uint8_t zahl);
+void putint12(uint16_t zahl);
 void puthex(uint8_t zahl);
 
 void drawlevelmeter(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level);

@@ -55,7 +55,8 @@ LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4,5, 6, 16, 11, 12, 13, 14, POSI
 elapsedMillis              zeitintervall;
 uint8_t           sekundencounter = 0;
 
-elapsedMicros sinceusb;
+uint8_t           startcounter=0; // timeout-counter beim Start von Settings, schneller als manuellcounter. Ermoeglicht Dreifachklick auf Taste 5
+uint8_t           settingstartcounter=0; // Counter fuer Klicks auf Taste 5elapsedMicros sinceusb;
 
 elapsedMicros sincelastbeepA;
 
@@ -110,6 +111,31 @@ uint8_t    last_cursorspalte=0; // letzte colonne des cursors
  uint8_t       curr_devicearray[8];
 
 uint16_t    blink_cursorpos=0xFFFF;
+
+uint8_t     displaystatus=0x00; // Tasks fuer Display
+ uint8_t                  masterstatus = 0;
+uint8_t                  eepromsavestatus = 0;
+
+// Tastatur
+uint8_t                 Tastenindex=0;
+uint16_t                Tastenwert=0;
+uint8_t                 adcswitch=0;
+uint16_t                lastTastenwert=0;
+int16_t                 Tastenwertdiff=0;
+uint16_t                tastaturcounter=0;
+
+uint8_t trimmtastaturstatus = 0;
+uint16_t                Trimmtastenwert=0;
+uint8_t                 Trimmtastenindex=0;
+uint16_t                lastTrimmtastenwert=0;
+int16_t                 Trimmtastenwertdiff=0;
+uint16_t                trimmtastaturcounter=0;
+
+
+uint8_t kanalsettingarray[ANZAHLMODELLE][NUM_SERVOS][KANALSETTINGBREITE] = {};
+
+uint8_t mixingsettingarray[ANZAHLMODELLE][4][2] = {};
+
 
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
@@ -504,6 +530,8 @@ void boardchange()
 {
   Serial.print("boardchange");
 }
+
+
 uint8_t Tastenwahl(uint16_t Tastaturwert)
 {
    if (Tastaturwert < TASTE01)
@@ -540,6 +568,7 @@ void tastenfunktion(uint16_t Tastenwert)
  //Serial.printf("\t\t\tTastenwert IN: %d\n",Tastenwert);
    if (Tastenwert>20) // ca Minimalwert der Matrix
    {
+    Serial.printf("\t\t\tTastenwert IN > 20: %d\n",Tastenwert);
       //         wdt_reset();
       /*
        0: Wochenplaninit
@@ -555,9 +584,9 @@ void tastenfunktion(uint16_t Tastenwert)
        
        12: Ebene höher
        */
-      //Serial.printf("TastaturCount: %d Tastenwert: %d \n",TastaturCount,Tastenwert);
+      Serial.printf("TastaturCount: %d Tastenwert: %d \n",TastaturCount,Tastenwert);
       TastaturCount++;
-      if (TastaturCount > 5)  //   Prellen
+      if (TastaturCount > 1)  //   Prellen
       {
         
          TastaturCount=0x00;
@@ -613,6 +642,22 @@ void tastenfunktion(uint16_t Tastenwert)
                case 3:   //
                {
                 Serial.printf("\tTaste 3\n");
+                if (manuellcounter)
+                {
+                  if (tastaturstatus & (1<<AKTIONOK))
+                  {
+                    //Serial.printf("H3 2 programmstatus vor: %d\n",programmstatus);
+                    programmstatus ^= (1<<STOP_ON);
+                    tastaturstatus &=  ~(1<<AKTIONOK);
+                    tastaturstatus |= (1<<UPDATEOK);
+                    //Serial.printf("H3 2 programmstatus nach: %d\n",programmstatus);
+
+                  }
+
+                  manuellcounter=0;
+
+                } // if (manuellcounter)
+ 
                 
                }break;
                   
@@ -624,7 +669,80 @@ void tastenfunktion(uint16_t Tastenwert)
                   
                case 5:                        // Ebene tiefer
                {
-                  Serial.printf("\tTaste 5\n");
+                  Serial.printf("\tTaste 5 startcounter: %d manuellcounter: %d\n",startcounter,manuellcounter);
+                  if ((startcounter == 0) && (manuellcounter)) // Settings sind nicht aktiv
+                  {
+                    Serial.printf("Taste 5 Settings sind nicht aktiv > SETTINGWAIT aktiviert\n");
+                    //lcd_gotoxy(0,2);
+                    //lcd_putc('1');
+                    //lcd_putc(' ');
+                    
+                    programmstatus |= (1<< SETTINGWAIT);
+                    settingstartcounter=1;
+                    manuellcounter = 1;
+                    
+                  }
+                  else
+                  {
+
+                    if (startcounter > 3) // Irrtum, kein Umschalten
+                      {
+                        Serial.printf("Taste 5 startcounter > 3 ERR\n");
+                        programmstatus &= ~(1<< SETTINGWAIT);
+                        settingstartcounter=0;
+                        startcounter=0;
+                        manuellcounter = 1;
+                      }
+                    else
+                    {
+                      Serial.printf("\tTaste 5 programmstatus: %d\n",programmstatus);
+                      if ((programmstatus & (1<< SETTINGWAIT))&& (manuellcounter)) // Umschaltvorgang noch aktiv
+                      {
+
+                        settingstartcounter++; // counter fuer klicks
+                        Serial.printf("SETTINGWAIT settingstartcounter: %d\n",settingstartcounter);
+                        if (settingstartcounter == 3)
+                        {
+                          //OSZI_A_LO();
+                          //lcd_gotoxy(2,2);
+                          //lcd_putc('3');
+                          Serial.printf("*** settingstartcounter 3\n");
+                          programmstatus &= ~(1<< SETTINGWAIT);
+                          //           programmstatus |= (1<<UPDATESCREEN);
+                          settingstartcounter=0;
+                          startcounter=0;
+                          // Umschalten
+                          display.clearDisplay();
+                          //lcd_putc('D');
+                          // Serial.printf("*H5*D \t");
+                          
+                          setsettingscreen();
+                          //lcd_putc('E');
+                          curr_screen = SETTINGSCREEN;
+                          curr_cursorspalte=0;
+                          curr_cursorzeile=0;
+                          last_cursorspalte=0;
+                          last_cursorzeile=0;
+                          blink_cursorpos=0xFFFF;
+                          // Serial.printf("*H5*F \n");
+                          manuellcounter = 1;
+                          Serial.printf("setsettingscreen C \n");
+                          //servostatus |=  (1<<RUN);
+                          //OSZI_A_HI();
+                          } // if settingcounter <
+                                 //manuellcounter = 0;
+                      } // programmstatus & (1<< SETTINGWAIT
+
+                        
+
+                    }
+                        
+
+
+                  }
+
+
+                Serial.printf("\tTaste 5 end\n");
                   
                } break;
                   
@@ -670,22 +788,24 @@ void tastenfunktion(uint16_t Tastenwert)
                   
                   
             }//switch Taste
-            
+            //Serial.printf("(1<<TASTE_ON) end\n");
          }
          
       }
+      Serial.printf("tastenfunktion end\n");
    }
    else 
    {
+      //Serial.printf("tastenfunktion else\n");
       if (analogtastaturstatus & (1<<TASTE_ON))
       {
         Taste = 0;
-         
-        // Serial.printf("Tastenwert 0\n");
-         analogtastaturstatus &= ~(1<<TASTE_ON);
+        Serial.printf("Tastenwert 0\n");
+        analogtastaturstatus &= ~(1<<TASTE_ON);
 
       }
    }
+   
 }
 
 uint16_t readTastatur(void)
@@ -704,7 +824,8 @@ uint16_t readTastatur(void)
 
 
  
-void setup() {
+void setup() 
+{
   Serial.begin(115200);
   //EEPROM.begin(512);
   delay(500);
@@ -714,7 +835,8 @@ void setup() {
 
 // OLED 
 // Initialising the UI will init the display too.
- if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
+  { 
     Serial.println(F("SSD1306 allocation failed"));
     for(;;); // Don't proceed, loop forever
   }
@@ -723,11 +845,11 @@ void setup() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  
+  delay(500);
   //display.fillCircle(display.width()/2, display.height()/2, 10, WHITE);
   
   display.display(); 
- 
+ delay(500);
 // end OLED
 
 for(int i=0;i<NUM_SERVOS;i++)
@@ -801,7 +923,8 @@ adc1_config_width(ADC_WIDTH_BIT_12);
   */
   /// register forth peer
   memcpy(peerInfo.peer_addr, broadcastAddress4, 6);
-  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+  if (esp_now_add_peer(&peerInfo) != ESP_OK)
+  {
     Serial.println("Failed to add peer 4");
     return;
   }
@@ -877,6 +1000,7 @@ if (firstrun)
   }
  buttonstatus |= (1<<START_TON);
  sethomescreen();
+ 
   firstrun = 0;
 
 }
@@ -884,53 +1008,182 @@ if (firstrun)
 if (zeitintervall > 500)
 {
   sekundencounter++;
-      if (sekundencounter%2)
-      {
-        Serial.printf("refresh_screen sendesekunde: %d\n",sendesekunde);
-        sendesekunde++;
-
-
-      }
-
-  if (manuellcounter && (blink_cursorpos < 0xFFFF))
+  if (sekundencounter%2)
   {
-    display_setcursorblink(updatecounter);
-  }
-  updatecounter++;
-  manuellcounter++;               
-  //Serial.printf("send usb: pot0 %d\n",pot0);
-      
-  //digitalWrite(OSZI_PULS_A, !digitalRead(OSZI_PULS_A));
-  // sendeminute
-  if (sendesekunde == 60)
-         {
-            sendeminute++;
-            sendesekunde = 0;
-            
-            
-            if (curr_screen == 0)
-            {
-               Serial.printf("refresh_screen sendeminute: %d\n",sendeminute);
-               servostatus &=  ~(1<<RUN); 
-               
-               refresh_screen();
-               servostatus |=  (1<<RUN); 
-               //display.setCursor(120,12);
-               //display_write_stopzeit(sendesekunde, sendeminute, 1);
-               display.display();
-            }
-            
-         }
+  //Serial.printf("refresh_screen sendesekunde: %d\n",sendesekunde);
+    sendesekunde++;
+    if (manuellcounter && (blink_cursorpos < 0xFFFF))
+     {
+    display_setcursorblink(sendesekunde);
+     }
+      // Akku-stuff here
 
+      // end Akkustuff
+    /*
+    if ((timeoutcounter > TIMEOUT) )
+			 {
+				// Test
+				//masterstatus |= (1<<TIMEOUT_BIT);
+			
+				if (digitalRead(AKKU_OFF_PIN)) // Akku ist ON,timeout ist relevant
+				{
+				   masterstatus |= (1<<TIMEOUT_BIT);
+				}
+				else
+				{
+				   timeoutcounter = 0;
+				}
+        
+			 }
+       */
+      		uint8_t levelwert0 = kanalsettingarray[curr_model][0][1]; // levelarray
+					 uint8_t levelwert1 = kanalsettingarray[curr_model][1][1];
+					 //       Serial.printf("curr_levelarray 0: %d, 1: %d\t",curr_levelarray[0], curr_levelarray[1]);
+					 uint8_t expowert0 = kanalsettingarray[curr_model][0][2]; // expoarray
+					 uint8_t expowert1 = kanalsettingarray[curr_model][1][2];
+					 //      Serial.printf("curr_expoarray 0: %d, 1: %d\n",curr_expoarray[0], curr_expoarray[1]);
+		 
+					 // kanalsettingarray[model][kanal][1] = curr_levelarray[kanal];
+					 uint8_t savelevelarray0 = kanalsettingarray[curr_model][0][1];
+					 uint8_t savelevelarray1 = kanalsettingarray[curr_model][1][1];
+					 //        Serial.printf("savelevelarray 0: %d, 1: %d\t",savelevelarray0, savelevelarray1);
+		 
+					 //kanalsettingarray[model][kanal][2] = curr_expoarray[kanal];
+					 uint8_t saveexpowertarray0 = kanalsettingarray[curr_model][0][2];
+					 uint8_t saveexpowertarray1 = kanalsettingarray[curr_model][1][2];
+					 //       Serial.printf("saveexpowertarray0 0: %d, 1: %d\n",saveexpowertarray0, saveexpowertarray1);
+					 uint8_t savedevicewertarray0 = kanalsettingarray[curr_model][0][3];
+					 uint8_t savedevicewertarray1 = kanalsettingarray[curr_model][1][3];
+
+      
+      
+      
+
+  
+    //Serial.printf("send usb: pot0 %d\n",pot0);
+      
+    //digitalWrite(OSZI_PULS_A, !digitalRead(OSZI_PULS_A));
+    // sendeminute
+    if (sendesekunde == 60)
+    {
+      sendeminute++;
+      sendesekunde = 0;
+   
+   
+      if (curr_screen == 0)
+      {
+         //Serial.printf("refresh_screen sendeminute: %d\n",sendeminute);
+        servostatus &=  ~(1<<RUN); 
+      
+        refresh_screen();
+        servostatus |=  (1<<RUN); 
+        //display.setCursor(120,12);
+        //display_write_stopzeit(sendesekunde, sendeminute, 1);
+        display.display();
+      }
+    } // sendesekunde == 60
+    if (sendeminute == 60)
+	  {
+	    sendestunde++;
+	  	sendeminute = 0;
+    }
+   
+  
+    if (programmstatus & (1<<STOP_ON))
+    {
+    //   lcd_gotoxy(15,0);
+    //   lcd_putint2(stopsekunde);
+            
+      stopsekunde++;
+      if (stopsekunde == 60)
+      {
+        stopminute++;
+        stopsekunde=0;
+      }
+      if (stopminute >= 60)
+      {
+        stopminute = 0;
+      }
+      if (curr_screen == 0)
+      {
+        //update_time();
+      }
+    }  // if STOP_ON}
+    displaystatus |= (1<<UHR_UPDATE);//XX
+  } // if sekundencounter%2
+
+if (manuellcounter && (blink_cursorpos < 0xFFFF))
+{
+   display_setcursorblink(updatecounter);
+}
+updatecounter++;
+manuellcounter++;               
+if (programmstatus & (1<<SETTINGWAIT))
+{
+  startcounter++;
+ 
+}
+else
+{
+         //startcounter = 0;
+}
+
+if ((manuellcounter > MANUELLTIMEOUT) )
+{
+         
+         
+//         programmstatus &= ~(1<< LEDON);
+  //display_set_LED(0);
+   manuellcounter=1;
+   
+  if (curr_screen) // nicht homescreen
+  {
+    display.clearDisplay();
+    curr_screen = 0;
+    curr_cursorspalte=0;
+    curr_cursorzeile=0;
+    last_cursorspalte=0;
+    last_cursorzeile=0;
+    settingstartcounter=0;
+    startcounter=0;
+    eepromsavestatus=0;
+    //       read_Ext_EEPROM_Settings();// zuruecksetzen
+    
+    sethomescreen();
+    
+    programmstatus &= ~(1<<UPDATESCREEN);
+  }
+  else 
+  {
+    
+    programmstatus &= ~(1<< SETTINGWAIT);
+    curr_screen = 0;
+    startcounter=0;
+    settingstartcounter=0;
+    
+    /*
+     lcd_gotoxy(0,2);
+     lcd_putc(' ');
+     lcd_putc(' ');
+     lcd_putc(' ');
+     */
+    
+  }
+ 
+//
+} // if ((manuellcounter > MANUELLTIMEOUT) )
+
+      
 
 
   zeitintervall = 0;
-}
+} // if zeitintervall
 
 if (displaymillis > displayintervall)
 {
-  refreshhomescreen();
-
+  //Serial.printf("refresh curr screen: %d\n",curr_screen);
+  //refreshhomescreen();
+  uint8_t refresh = refresh_screen();
   
   /*
   // https://en.wikipedia.org/wiki/Code_page_437
@@ -969,8 +1222,8 @@ if (ledmillis > ledintervall)
   {
     ledmillis = 0;
     ubatt++;
-    drawlevelmeter(120, 12,8,48,ubatt%100);
-  
+    //drawlevelmeter(120, 12,8,48,ubatt%100);
+
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     //Serial.printf("DebouncedState: %d\n",DebouncedState);
     //Serial.println("led");
@@ -1146,7 +1399,7 @@ tastaturwert = 0x3FF - tastaturmittel;
 //tastaturwert =  tastaturmittel;
 
 tastenfunktion(tastaturwert);
-
+//Serial.printf("nach tastenfunktion\n");
 
 averagecounter++;
 

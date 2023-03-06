@@ -70,8 +70,13 @@
 #define  TIMEOUT_BIT                6 //  Beep nach ablauf des Timeout
 #define  HALT_BIT                   7 //  Bit 7
 
-#define TIMEOUT   12000             // 2800 ticks fuer 1 minute
+#define TIMEOUT               12000             // 2800 ticks fuer 1 minute
+#define MANUELLTIMEOUT        32 // Loopled-counts bis Manuell zurueckgesetzt wird. 50: ca. 30s
 
+
+#define ANZAHLMODELLE 4
+#define NUM_SERVOS    4
+#define KANALSETTINGBREITE 32
 // Bits von eepromstatus
 
 
@@ -79,3 +84,9 @@
 // Bits von displaystatus
 #define UHR_UPDATE         0
 #define BATTERIE_UPDATE    1
+
+
+
+#define UPDATESCREEN    5 // Bit in status wird gesetzt wenn eine Taste gedrueckt ist, reset wenn update ausgefuehrt
+
+#define SETTINGWAIT     6  // Bit in status wird gesetzt bis Taste 5 3 * gedrueckt ist
