@@ -965,7 +965,7 @@ buttonstatus |= (1<<START_TON);
 
 // end OLED functions
  
- 
+ #pragma :mark
 void loop() 
 {
 
@@ -1130,7 +1130,7 @@ else
 
 if ((manuellcounter > MANUELLTIMEOUT) )
 {
-         
+      //Serial.printf("manuellcounter > MANUELLTIMEOUT\n") ;  
          
 //         programmstatus &= ~(1<< LEDON);
   //display_set_LED(0);
@@ -1138,6 +1138,7 @@ if ((manuellcounter > MANUELLTIMEOUT) )
    
   if (curr_screen) // nicht homescreen
   {
+    Serial.printf("manuellcounter > MANUELLTIMEOUT reset to homescreen\n");   
     display.clearDisplay();
     curr_screen = 0;
     curr_cursorspalte=0;

@@ -227,6 +227,126 @@ uint16_t levelprozent = canaldata.x*100/255;
 
 void setsettingscreen(void)
 {
+  {
+    Serial.printf("setsettingscreen mit homescreen\n");
+    // von sethomescreen
+  resetRegister();
+
+  // Zeile 0
+  posregister[0][0] = 0   | (2 << 10); // Name Modell
+  posregister[0][1] = itemtab[5] | (1 << 10);// Laufzeit
+   blink_cursorpos=0xFFFF;
+   posregister[0][0] = itemtab[0] | (1* ZEILENABSTAND << 10);// Laufzeit Anzeige
+   
+   // Zeile 1
+   posregister[0][2] =  itemtab[5] |    (1 * ZEILENABSTAND << 10); // settingtext
+   posregister[0][3] =  itemtab[7] |    (1 * ZEILENABSTAND << 10); // settingnummer
+
+
+   // Zeile 2 
+   posregister[1][0] =  itemtab[0] |    (2 * ZEILENABSTAND << 10); // Kanaltext
+   
+   // Zeile 3
+   posregister[2][0] =  itemtab[0] |    (3 * ZEILENABSTAND << 10); // mixtext
+   posregister[2][1] =  itemtab[5] |    (3 * ZEILENABSTAND << 10); // mixcode
+
+
+   posregister[3][0] =  itemtab[0] |    (4 * ZEILENABSTAND << 10); // Zuteilungtext
+ 
+   posregister[4][0] =  itemtab[0] |    (7 * ZEILENABSTAND << 10); // Zuteilungtext
+   
+   cursorpos[0][0] = cursortab[0] |    (1 * ZEILENABSTAND << 10); // modellcursor lo: tab hi: page
+   // cursorpos fuer model zeile/colonne
+   
+   cursorpos[0][1] = cursortab[5] |    (1 * ZEILENABSTAND << 10); //  cursorpos fuer set nr
+   
+   cursorpos[1][0] = cursortab[0] |    (3 * ZEILENABSTAND << 10);  // cursorpos fuer kanal
+   
+   cursorpos[2][0] = cursortab[0] |    (5 * ZEILENABSTAND << 10);  // cursorpos fuer mix
+   cursorpos[2][1] = cursortab[5] |    (5 * ZEILENABSTAND << 10);  // cursorpos fuer mixcode
+
+   cursorpos[3][0] = cursortab[0] |    (7 * ZEILENABSTAND << 10);  // cursorpos fuer zuteilung
+   cursorpos[4][0] = cursortab[0] |    (7 * ZEILENABSTAND << 10);  // cursorpos fuer zuteilung
+  
+  
+
+  char_x = 0;
+  char_y = 0;
+
+  display.setCursor(char_x,char_y);
+    //display.setCursor(0,0);
+  display.print(SettingTable[0]);
+  // laufzeit aktualisieren
+    char_x = posregister[0][1] & 0x00FF;
+    char_y = (posregister[0][1] & 0xFF00)>>10;
+    clearblock(char_x,char_y,68,8);
+    display.setCursor(char_x,char_y);
+    display_write_laufzeit(sendesekunde,sendeminute);
+  //Modellname
+  char_y= (posregister[0][0] & 0xFF00)>> 10;
+  char_x = posregister[0][0] & 0x00FF;
+  display.setCursor(char_x,char_y);
+  display_write_str(ModelTable[curr_model],1);
+
+   char_x = cursorpos[0][0] & 0x00FF;
+   char_y = ((cursorpos[0][0] & 0xFF00)>> 10) ;
+   display.setCursor(char_x,char_y);
+  pfeilvollrechts(char_x,char_y,1);
+
+ // Zeile 1 Set mit Nummer
+   char_y= (posregister[0][2] & 0xFF00)>> 10;
+   char_x = posregister[0][2] & 0x00FF;
+   display.setCursor(char_x,char_y);
+   display_write_str(SettingTable[2],1); // Set
+
+
+// Zeile 2 Kanal
+   char_y= (posregister[1][0] & 0xFF00)>> 10;
+   char_x = posregister[1][0] & 0x00FF;
+   display.setCursor(char_x,char_y);
+   display_write_str(SettingTable[3],1);
+
+   // Zeile 3 Mix-Zeile
+   char_y= (posregister[2][0] & 0xFF00)>> 10;
+   char_x = posregister[2][0] & 0x00FF;
+   display.setCursor(char_x,char_y);
+   
+   display_write_str(SettingTable[4],1);
+
+
+/*
+  char_x = 50;
+  display.setCursor(char_x,char_y);
+  //display.print(ModelTable[0]); // Name Modell
+  display_write_str(ModelTable[curr_model],1);
+*/
+  char_x = posregister[0][1] & 0x00FF;
+  char_y = (posregister[0][1] & 0xFF00)>>10;
+  clearblock(char_x,char_y,68,8);
+  display.setCursor(char_x,char_y);
+  display_write_laufzeit(sendesekunde,sendeminute);
+
+  char_y= (posregister[0][0] & 0xFF00)>> 10;
+  char_x = posregister[0][0] & 0x00FF;
+
+   display_write_str(ModelTable[curr_model],1);
+
+   char_x = cursorpos[0][0] & 0x00FF;
+   char_y = ((cursorpos[0][0] & 0xFF00)>> 10) + 20;
+  pfeilvollrechts(char_x,char_y,1);
+
+  
+
+  
+  display.display();
+  Serial.printf("setsettingscreen mit homescreen end\n");
+  return;
+
+  }
+
+
+
+
   //Serial.printf("setsettingscreen start\n");
  
    
@@ -333,6 +453,63 @@ void setsettingscreen(void)
 
 void refreshsettingscreen(void)
 {
+  {
+    //Serial.printf("refreshsettingscreen mit homescreen\n");
+    char_x = 0;
+    char_y = 0;
+
+    display.setCursor(char_x,char_y);
+    //'Settings' schreiben'
+    display.print(SettingTable[0]);
+
+    // laufzeit aktualisieren
+    char_x = posregister[0][1] & 0x00FF;
+    char_y = (posregister[0][1] & 0xFF00)>>10;
+    clearblock(char_x,char_y,68,8);
+    display.setCursor(char_x,char_y);
+    display_write_laufzeit(sendesekunde,sendeminute);
+
+    char_y= (posregister[0][0] & 0xFF00)>> 10;
+    char_x = posregister[0][0] & 0x00FF;
+    display.setCursor(char_x,char_y);
+    display_write_str(ModelTable[curr_model],1);
+    char_x = cursorpos[0][0] & 0x00FF;
+    char_y = ((cursorpos[0][0] & 0xFF00)>> 10) ;
+    display.setCursor(char_x,char_y);
+    pfeilvollrechts(char_x,char_y,1);
+
+   // Zeile 1 Set mit Nummer
+   char_y= (posregister[0][2] & 0xFF00)>> 10;
+   char_x = posregister[0][2] & 0x00FF;
+  display.setCursor(char_x,char_y);
+   display_write_str(SettingTable[2],1);
+
+   // Zeile 2 Kanal
+   char_y= (posregister[1][0] & 0xFF00)>> 10;
+   char_x = posregister[1][0] & 0x00FF;
+   display.setCursor(char_x,char_y);
+   display_write_str(SettingTable[3],1);
+
+
+// Zeile 3 Mix-Zeile
+   char_y= (posregister[2][0] & 0xFF00)>> 10;
+   char_x = posregister[2][0] & 0x00FF;
+   display.setCursor(char_x,char_y);
+   display_write_str(SettingTable[4],1);
+
+   char_y= (posregister[2][1] & 0xFF00)>> 10;
+   char_x = posregister[2][1] & 0x00FF;
+   display.setCursor(char_x,char_y);
+   display_write_str(SettingcodeTable[0],1);
+
+
+    //Serial.printf("refreshsettingscreen mit homescreen end\n");
+  }
+  display.display();
+return;
+
+
+
   //resetRegister();
   blink_cursorpos=0xFFFF;
 

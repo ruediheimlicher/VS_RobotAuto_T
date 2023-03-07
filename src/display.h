@@ -53,6 +53,8 @@ extern Adafruit_SSD1306 display;
 #define DISPLAY_PAGE_ADDRESS		0xB0
 #define DISPLAY_COL_ADDRESS_MSB		0x10
 
+#define ZEILENABSTAND 10
+
 
 extern  uint8_t       curr_levelarray[8];
 extern  uint8_t       curr_expoarray[8];
