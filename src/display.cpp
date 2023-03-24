@@ -21,16 +21,19 @@ extern uint16_t stopsekunde;
 extern uint16_t stopminute;
 extern uint8_t sendesekunde;
 extern uint8_t sendeminute;
+
+extern  uint8_t       curr_setting;
 //extern uint8_t       curr_model; // aktuelles modell
 
 uint8_t char_x;
 uint8_t char_y;
-uint16_t  posregister[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer Menueintraege (hex). geladen aus progmem
+extern uint16_t  posregister[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer Menueintraege (hex). geladen aus progmem
 
-uint16_t  cursorpos[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer cursor (hex). geladen aus progmem
+extern uint16_t  cursorpos[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer cursor (hex). geladen aus progmem
 
 
 extern canal_struct canaldata;
+extern canal_struct indata;
 uint8_t cursortab[10] = {cursortab0,cursortab1,cursortab2,cursortab3,cursortab4,cursortab5,cursortab6,cursortab7,cursortab0,cursortab0};
 uint8_t itemtab[10] = {itemtab0,itemtab1,itemtab2,itemtab3,itemtab4,itemtab5,itemtab6,itemtab7,itemtab0,itemtab0};
 
@@ -191,14 +194,23 @@ void refreshhomescreen(void)
    
   putint12(lxmittel);
   
+
   display.setCursor(30,57);
   putint(canaldata.x);
 
+/*
   display.setCursor(52,57);
   display.print(lymittel);
   display.setCursor(82,57);
   putint(canaldata.y);
-  
+ */
+  display.setCursor(62,57);
+  display_write_str("x:",1);
+  display.print(indata.x);
+  display.setCursor(92,57);
+  display_write_str("y:",1);
+  display.print(indata.y);
+
 
  /*
   clearblock(0,32,68,8);
@@ -293,7 +305,7 @@ void setsettingscreen(void)
    display.setCursor(char_x,char_y);
   pfeilvollrechts(char_x,char_y,1);
 
- // Zeile 1 Set mit Nummer
+ // Zeile 1 Set 
    char_y= (posregister[0][2] & 0xFF00)>> 10;
    char_x = posregister[0][2] & 0x00FF;
    display.setCursor(char_x,char_y);
@@ -478,11 +490,19 @@ void refreshsettingscreen(void)
     display.setCursor(char_x,char_y);
     pfeilvollrechts(char_x,char_y,1);
 
-   // Zeile 1 Set mit Nummer
+   // Zeile 1 Set Nummer
    char_y= (posregister[0][2] & 0xFF00)>> 10;
    char_x = posregister[0][2] & 0x00FF;
   display.setCursor(char_x,char_y);
    display_write_str(SettingTable[2],1);
+
+ // Zeile 1 Set Nummer
+   char_y= (posregister[0][3] & 0xFF00)>> 10;
+   char_x = posregister[0][3] & 0x00FF;
+  display.setCursor(char_x,char_y);
+   puthex(curr_setting);
+
+
 
    // Zeile 2 Kanal
    char_y= (posregister[1][0] & 0xFF00)>> 10;

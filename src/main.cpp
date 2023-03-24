@@ -44,12 +44,16 @@ LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4,5, 6, 16, 11, 12, 13, 14, POSI
 
 // ASCII: https://www.i8086.de/zeichensatz/code-page-437.html
 
+// Master ESP Board MAC Address:  94:B9:7E:D9:F0:50
 
 #define OLED_RESET -1
 
 #define TASTEOK            1
 #define AKTIONOK           2
 #define UPDATEOK           3
+
+uint16_t  cursorpos[8][8]={}; // Aktueller screen: werte fuer page und darauf liegende col fuer den cursor
+uint16_t  posregister[8][8]; // Aktueller screen: werte fuer page und daraufliegende col fuer Menueintraege (hex). geladen aus progmem
 
 
 elapsedMillis              zeitintervall;
@@ -109,6 +113,8 @@ uint8_t    last_cursorspalte=0; // letzte colonne des cursors
  uint8_t       curr_ausgangarray[8];
 
  uint8_t       curr_devicearray[8];
+ //uint8_t       curr_setting=0; // aktuelles Setting fuer Modell
+
 
 uint16_t    blink_cursorpos=0xFFFF;
 
@@ -367,6 +373,8 @@ typedef struct canal_struct
 //Create a struct_message called canaldata
 canal_struct canaldata;
 
+canal_struct indata;
+
 elapsedMillis sendtimer;
 uint8_t loopstatus = 0;
 
@@ -407,7 +415,7 @@ void deletePeer() {
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) 
 {
   char macStr[18];
-  //Serial.print("Packet to: ");
+  //Serial.printf("Packet sent\n");
   // Copies the sender mac address to a string
   //snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
   //         mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
@@ -415,7 +423,38 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
  // Serial.print(" send status:\t");
  // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
+//callback function that will be executed when data is received
+// Callback when data is received
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  memcpy(&indata, incomingData, sizeof(canaldata));
+  Serial.print("Bytes received: ");
+  Serial.println(len);
+  Serial.printf("indata x: %d y. %d\n", indata.x, indata.y);
+ 
+}
+/*
+void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) 
+{
+  // blink
+  memcpy(&indata, incomingData, sizeof(canaldata));
+ 
+  Serial.print("Bytes received: ");
+  //Serial.printf("%d %d %d %d %d %d \n",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
 
+
+  Serial.printf("indata x: %d y. %d\n", indata.x, indata.y);
+  //Serial.print(canaldata.lx);
+  //Serial.print(" ");
+  //Serial.print("ly: ");
+  //Serial.print(canaldata.ly);
+  //Serial.print(" int ");
+  //Serial.print(interrupts);
+  //Serial.print(" ");
+  Serial.printf("digi: %d\n", canaldata.digi);
+  Serial.println(canaldata.digi);
+
+}
+*/
 uint16_t tickslimited(uint16_t inticks)
 {
   if(inticks > MAX_TICKS)
@@ -568,7 +607,7 @@ void tastenfunktion(uint16_t Tastenwert)
  //Serial.printf("\t\t\tTastenwert IN: %d\n",Tastenwert);
    if (Tastenwert>20) // ca Minimalwert der Matrix
    {
-    Serial.printf("\t\t\tTastenwert IN > 20: %d\n",Tastenwert);
+    //Serial.printf("\t\t\tTastenwert IN > 20: %d\n",Tastenwert);
       //         wdt_reset();
       /*
        0: Wochenplaninit
@@ -584,11 +623,11 @@ void tastenfunktion(uint16_t Tastenwert)
        
        12: Ebene höher
        */
-      Serial.printf("TastaturCount: %d Tastenwert: %d \n",TastaturCount,Tastenwert);
+      //Serial.printf("TastaturCount: %d Tastenwert: %d \n",TastaturCount,Tastenwert);
       TastaturCount++;
       if (TastaturCount > 1)  //   Prellen
       {
-        
+        tastaturstatus |= (1<<AKTIONOK);
          TastaturCount=0x00;
          
          if (analogtastaturstatus & (1<<TASTE_ON)) // 
@@ -623,11 +662,13 @@ void tastenfunktion(uint16_t Tastenwert)
                   
                case 1: 
                {
-                  Serial.printf("\tTaste 1\n");
+                  Serial.printf("\tTaste 1 tastaturstatus: %x\n",tastaturstatus);
                 if (tastaturstatus & (1<<AKTIONOK))
                 {
                   programmstatus ^= (1<<MOTOR_ON);
                   tastaturstatus &=  ~(1<<AKTIONOK);
+                  buttonstatus |= (1<<START_TON);
+                  canaldata.digi |= (1<<3);
                 }
                   manuellcounter=0;
                 } // case 1
@@ -670,6 +711,12 @@ void tastenfunktion(uint16_t Tastenwert)
                case 5:                        // Ebene tiefer
                {
                   Serial.printf("\tTaste 5 startcounter: %d manuellcounter: %d\n",startcounter,manuellcounter);
+                  
+                  switch (curr_screen)
+
+                  {
+                    case HOMESCREEN:
+                    {
                   if ((startcounter == 0) && (manuellcounter)) // Settings sind nicht aktiv
                   {
                     Serial.printf("Taste 5 Settings sind nicht aktiv > SETTINGWAIT aktiviert\n");
@@ -733,14 +780,44 @@ void tastenfunktion(uint16_t Tastenwert)
                                  //manuellcounter = 0;
                       } // programmstatus & (1<< SETTINGWAIT
 
-                        
-
                     }
-                        
-
-
                   }
+                    }break; // end case HOMESCREEN
 
+                    case SETTINGSCREEN: // T5 Setting
+                    {
+                      if (manuellcounter)
+                      {
+                         switch (curr_cursorzeile)
+                           {
+                              case 0: // Modell
+                              {
+                                 // lcd_gotoxy(0,0);
+                                 //lcd_puthex(curr_cursorzeile);
+                                 //lcd_putc('*');
+                                 //lcd_puthex(curr_cursorspalte);
+                                 if (manuellcounter)
+                                 {
+                                    blink_cursorpos =  cursorpos[curr_cursorzeile][curr_cursorspalte];
+                                    manuellcounter=0;
+                                 } // if manuellcounter
+                              }break;
+                                 
+
+
+
+
+                           } // switch curr_zeile
+                                 
+
+
+
+
+                      } // end if manuellcounter
+
+
+                    }break; // end case Settingscreen
+                  } //end switch curr_screen
 
                 Serial.printf("\tTaste 5 end\n");
                   
@@ -792,7 +869,7 @@ void tastenfunktion(uint16_t Tastenwert)
          }
          
       }
-      Serial.printf("tastenfunktion end\n");
+      //Serial.printf("tastenfunktion end\n");
    }
    else 
    {
@@ -871,6 +948,8 @@ adc1_config_width(ADC_WIDTH_BIT_12);
 //adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_11);
 
   WiFi.mode(WIFI_STA);
+
+
  
   if (esp_now_init() != ESP_OK) 
   {
@@ -879,8 +958,11 @@ adc1_config_width(ADC_WIDTH_BIT_12);
   }
    
   //esp_now_register_send_cb(OnDataSent);
-  esp_err_t registererr = esp_now_register_send_cb(OnDataSent);
+  esp_err_t registererr = esp_now_register_send_cb(OnDataSent); 
+
   Serial.printf("registererr: %d\n",registererr);
+
+  esp_now_register_recv_cb(OnDataRecv);
 
     
   // register peer
@@ -958,14 +1040,15 @@ buttonstatus |= (1<<START_TON);
 
 
 
-}
+} // end setup
 
 // OLED functions
 
 
 // end OLED functions
  
- #pragma :mark
+
+
 void loop() 
 {
 
@@ -1230,7 +1313,8 @@ if (ledmillis > ledintervall)
     //Serial.println("led");
     //Serial.println(canaldata.lx);
     //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
-    //Serial.printf("%d \t%d \n", canaldata.x , canaldata.y);
+    Serial.printf("canaldata %d \t%d \t", canaldata.x , canaldata.y);
+    Serial.printf("indata %d \t%d \n", indata.x , indata.y);
     //Serial.printf("%d \t%d DebouncedState: %d\n", lxmittel , lymittel,DebouncedState);
     lcd.setCursor(0,1);
     lcd_puts("data");
@@ -1568,6 +1652,9 @@ canaldata.y = map(uint16_t(floatkanalwerty),mittey - 0x200,mittey + 0x200,0,180)
 //Serial.printf("data.x: %d data.y: %d \n",canaldata.x, canaldata.y); 
 //canaldata.ly = mixkanalwerty;
 canaldata.ly = uint16_t(floatkanalwerty);
+
+
+
 
 //Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
 

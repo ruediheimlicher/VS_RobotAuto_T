@@ -7,6 +7,18 @@
 		{
 			"name": "VS_RobotAuto_T",
 			"path": "."
+		},
+		{
+			"name": "VS_RobotStepper",
+			"path": "../VS_RobotStepper"
+		},
+		{
+			"name": "RobotAuto_raw",
+			"path": "../../../../../../PlatformIO/Projects/RobotAuto_raw"
+		},
+		{
+			"name": "test",
+			"path": "../../../../../../PlatformIO/Projects/test"
 		}
 	],
 	"settings": {}
