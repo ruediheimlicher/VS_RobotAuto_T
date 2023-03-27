@@ -28,6 +28,8 @@
 #define ROWS             4    //LCD rows
 #define LCD_SPACE_SYMBOL 0x20 //space symbol from LCD ROM, see p.9 of GDM2004D datasheet
 
+#define AVERAGE 8
+
 LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4,5, 6, 16, 11, 12, 13, 14, POSITIVE);
 //LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
@@ -168,14 +170,13 @@ uint8_t broadcastAddress1[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // stub
 uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}; // ESP8266 D1 MINI
 //uint8_t broadcastAddress3[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57}; // RobotStepper
 uint8_t broadcastAddress4[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
+// WEMOS MINI MAC: 8c:aa:b5:7b:a3:28 {0x8c,0xaa,0xb5,0x7b,0xa3,0x28}
 uint8_t broadcastAddressArray[8][6] = 
 {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}, // ESP8266 D1 MINI
 {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57}, // RobotStepper
-{0x44, 0x17, 0x93, 0x14, 0xF7, 0x17},
+{0x8c, 0xaa, 0xb5, 0x7b, 0xa3, 0x28}, // WMOS MINI,
 {0x44, 0x17, 0x93, 0x14, 0xF6, 0x6F},
-{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 uint8_t peerpos = 1; // geladener peer
@@ -200,11 +201,21 @@ uint8_t peerpos = 1; // geladener peer
 #define MIN_ADC 2150 // Min wert vom ADC
 
 #define NULLBAND 10 // nichts tun bei kleineren Kanalwerten
+
 uint16_t   servomittearray[NUM_SERVOS] = {}; // Werte fuer Mitte
 uint16_t   maxADCarray[NUM_SERVOS] = {};
 uint16_t   minADCarray[NUM_SERVOS] = {};
 
- 
+ #define batt_PIN 33
+uint16_t battspannung =0;
+float battspannungmittel =0;
+uint16_t battspannungmittelwertarray[AVERAGE];
+uint16_t battaveragecounter = 0;
+#define ADC_FAKTOR 1.0
+uint16_t spannungtable[] = {0,39,150,250,366,475,583,695,801,915,1018};
+float battspannunginterpol = 0;
+float spannungvolt = 2;
+float slavespannungvolt = 2;
 
 uint16_t maxwinkel = 180;
 
@@ -245,7 +256,7 @@ uint8_t DebouncedState;
 uint8_t lastDebouncedState;
 uint8_t debouncestatus;
 
-#define AVERAGE 8
+
 uint8_t averagecounter = 0;
 uint16_t lxmittelwertarray[AVERAGE];
 uint16_t lymittelwertarray[AVERAGE];
@@ -265,7 +276,7 @@ taste3: GPIO5
 
 */
 
-#define BOARD_TASTE 33
+
 #define BOARD_MINI 1
 #define BOARD_NODE 0
 uint8_t boardstatus = 0;
@@ -286,7 +297,7 @@ uint8_t firstrun = 1;
 #define TASTE2 26
 #define TASTE3 25
 
-#define TASTATUR_PIN  33
+#define TASTATUR_PIN  32
 uint8_t tastencounter = 0;
 uint16_t tastaturmittel = 0;
 uint16_t tastaturwert = 0;
@@ -486,8 +497,6 @@ uint16_t servoticks(uint16_t inticks)
  */
 }
 
-
-
 uint16_t mapADC(uint16_t inADC)
 {
   uint16_t raw_in = inADC;
@@ -604,7 +613,7 @@ uint8_t Tastenwahl(uint16_t Tastaturwert)
 
 void tastenfunktion(uint16_t Tastenwert)
 {
- //Serial.printf("\t\t\tTastenwert IN: %d\n",Tastenwert);
+ //Serial.printf("\t\t\t\t\tTastenwert IN: %d\n",Tastenwert);
    if (Tastenwert>20) // ca Minimalwert der Matrix
    {
     //Serial.printf("\t\t\tTastenwert IN > 20: %d\n",Tastenwert);
@@ -1020,7 +1029,9 @@ adc1_config_width(ADC_WIDTH_BIT_12);
    //adc1_config_width(ADC_WIDTH_BIT_12);
    adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_11);
    adc1_config_channel_atten(ADC1_CHANNEL_3,ADC_ATTEN_DB_11);
-  adc1_config_channel_atten(ADC1_CHANNEL_5,ADC_ATTEN_DB_11);
+   adc1_config_channel_atten(ADC1_CHANNEL_4,ADC_ATTEN_DB_11); // Tastatur
+  adc1_config_channel_atten(ADC1_CHANNEL_5,ADC_ATTEN_DB_11); // Batt
+
   adc1_config_width(ADC_WIDTH_BIT_12);
 
 //   adc1_config_channel_atten(ADC1_CHANNEL_6,ADC_ATTEN_DB_0);
@@ -1269,35 +1280,7 @@ if (displaymillis > displayintervall)
   //refreshhomescreen();
   uint8_t refresh = refresh_screen();
   
-  /*
-  // https://en.wikipedia.org/wiki/Code_page_437
-  displaymillis = 0;
-  //display.clearDisplay();
-  clearline(10);
-  display.setCursor(0,0);
-  display.println("RobotAuto_T");
-  clearblock(0,20,60,8);
-  display.setCursor(0,20);
-  display.print(lxmittel);
-  clearblock(0,32,60,8);
-  display.setCursor(32,20);
-  display.print(canaldata.x);
- 
-   display.setCursor(0, 32);
-  display.print(lymittel);
   
-   display.setCursor(32,32);
-  display.print(canaldata.y);
-  
- clearblock(100,0,20,8);
-  display.setCursor(100,0);
-  display.print(Taste);
-   display.setCursor(110,0);
-   //buttonstatus = 13;
-  display.print(buttonstatus);
-  display.display();
-  */
-//drawverticalrect();
 
 }
 
@@ -1309,7 +1292,45 @@ if (ledmillis > ledintervall)
     //drawlevelmeter(120, 12,8,48,ubatt%100);
 
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-    //Serial.printf("DebouncedState: %d\n",DebouncedState);
+
+    uint16_t rawbattspannung = analogRead(batt_PIN);
+    battspannungmittelwertarray[battaveragecounter & 0x07] = rawbattspannung;
+    battspannungmittel = 0;
+    for(int i=0;i<AVERAGE;i++)
+    {
+        battspannungmittel += battspannungmittelwertarray[i];
+    }
+    battspannungmittel /= AVERAGE;
+
+    battspannungmittel /= 2;
+
+    battspannungmittel *= ADC_FAKTOR;
+    size_t anz = sizeof(spannungtable)/sizeof(spannungtable[0]);
+    uint8_t pos = 0;
+    uint8_t anzschritte = 100;
+    
+    // 0,39,150,250,366,475,583,695,801,915,1018
+    for(pos=1;pos<anz;pos++)
+    {
+      if (spannungtable[pos] > battspannungmittel )
+      {
+        float posdiff = spannungtable[pos] - spannungtable[pos-1]; // diff im array zum unteren Wert
+        float posrest = battspannungmittel - spannungtable[pos-1]; // diff von battspannungmittel zum unteren Wert
+        battspannunginterpol = spannungtable[pos-1] + posdiff/anzschritte*posrest;
+        spannungvolt = pos-1 + (posrest/posdiff);
+        //Serial.printf("pos: %d posdiff: %2.2f  posrest: %2.2f battspannunginterpol: %2.2f spannungvolt: %2.2f\n",pos,posdiff, posrest,battspannunginterpol,spannungvolt);
+
+        break;;
+      }
+    }
+
+
+
+    battaveragecounter++;
+    Serial.printf("rawbattspannung: %d  battspannungmittel: %2.2f battspannunginterpol: %2.2f\n",rawbattspannung, battspannungmittel,battspannunginterpol);
+
+    slavespannungvolt = indata.x;
+    //Serial.printf("tastaturwert: %d\n",tastaturwert);
     //Serial.println("led");
     //Serial.println(canaldata.lx);
     //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
@@ -1467,21 +1488,22 @@ lymittel /= AVERAGE;
 
 
 
-int16_t rawtastaturwert = adc1_get_raw(ADC1_CHANNEL_5);
+int16_t rawtastaturwert = adc1_get_raw(ADC1_CHANNEL_4);
+
 tastaturmittelwertarray[(averagecounter & 0x07)] = rawtastaturwert;
 tastaturmittel = 0;
 for (int i=0;i < AVERAGE;i++)
 {
   tastaturmittel += tastaturmittelwertarray[i];
 }
-ADCwert = rawtastaturwert;
-tastaturmittel = rawtastaturwert;///= AVERAGE;
+//ADCwert = rawtastaturwert;
+//tastaturmittel = rawtastaturwert;///= AVERAGE;
 
 //tastaturmittel = 0xFFF - tastaturmittel;
-tastaturmittel /= 4;
+tastaturmittel /= AVERAGE;
 tastaturmittel = tastaturmittel ; //* 9 / 8 ;
-tastaturwert = 0x3FF - tastaturmittel;
-//tastaturwert =  tastaturmittel;
+//tastaturwert = 0x3FF - tastaturmittel;
+tastaturwert =  tastaturmittel;
 
 tastenfunktion(tastaturwert);
 //Serial.printf("nach tastenfunktion\n");
