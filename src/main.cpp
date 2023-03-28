@@ -1443,9 +1443,9 @@ Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly);
 
 
     Serial.printf("Eichung maxADC X: %d minADC X: %d maxADC Y: %d minADC Y: %d\n", maxADCarray[KANAL_X],minADCarray[KANAL_X],maxADCarray[KANAL_Y],minADCarray[KANAL_Y]);
-  }
+  } // end Joystick eichen
 
-  }
+  }// end ledmillis
 
  if (debouncemillis > 5)
   {
@@ -1483,6 +1483,7 @@ for (int i=0;i < AVERAGE;i++)
 //uint16_t lx = tickslimited(lxmittel);
 uint16_t lx = mapADC(lxmittel);
 uint16_t kanalwertx = lx;
+
 //Serial.printf("lxmittel: %d kanalwertx: %d \t",lxmittel,kanalwertx); 
 
 
@@ -1496,44 +1497,6 @@ for (int i=0;i < AVERAGE;i++)
 lymittel /= AVERAGE;
 
 
-
-int16_t rawtastaturwert = adc1_get_raw(ADC1_CHANNEL_4);
-
-tastaturmittelwertarray[(averagecounter & 0x07)] = rawtastaturwert;
-tastaturmittel = 0;
-for (int i=0;i < AVERAGE;i++)
-{
-  tastaturmittel += tastaturmittelwertarray[i];
-}
-//ADCwert = rawtastaturwert;
-//tastaturmittel = rawtastaturwert;///= AVERAGE;
-
-//tastaturmittel = 0xFFF - tastaturmittel;
-tastaturmittel /= AVERAGE;
-tastaturmittel = tastaturmittel ; //* 9 / 8 ;
-//tastaturwert = 0x3FF - tastaturmittel;
-tastaturwert =  tastaturmittel;
-
-tastenfunktion(tastaturwert);
-//Serial.printf("nach tastenfunktion\n");
-
-averagecounter++;
-
-
-    tastencounter++;
-      if (tastencounter > 10)
-      {
-         tastencounter = 0;
-         //tastenfunktion(tastaturmittel);
-          
-
-      }
-
-
-
-
-//lcd.setCursor(0, 2); 
-      //lcd.print(adctastenwert);
 
  // Grenzwerte einhalten
 //uint16_t ly = tickslimited(lymittel); // Grenzen einhalten, MAX_TICKS, MIN_TICKS
@@ -1684,6 +1647,43 @@ canaldata.y = map(uint16_t(floatkanalwerty),mittey - 0x200,mittey + 0x200,0,180)
 //canaldata.ly = mixkanalwerty;
 canaldata.ly = uint16_t(floatkanalwerty);
 
+
+// Start Tastatur
+int16_t rawtastaturwert = adc1_get_raw(ADC1_CHANNEL_4);
+
+tastaturmittelwertarray[(averagecounter & 0x07)] = rawtastaturwert;
+tastaturmittel = 0;
+for (int i=0;i < AVERAGE;i++)
+{
+  tastaturmittel += tastaturmittelwertarray[i];
+}
+//ADCwert = rawtastaturwert;
+//tastaturmittel = rawtastaturwert;///= AVERAGE;
+
+//tastaturmittel = 0xFFF - tastaturmittel;
+tastaturmittel /= AVERAGE;
+tastaturmittel = tastaturmittel ; //* 9 / 8 ;
+//tastaturwert = 0x3FF - tastaturmittel;
+tastaturwert =  tastaturmittel;
+
+tastenfunktion(tastaturwert);
+//Serial.printf("nach tastenfunktion\n");
+
+averagecounter++;
+
+
+    tastencounter++;
+      if (tastencounter > 10)
+      {
+         tastencounter = 0;
+         //tastenfunktion(tastaturmittel);
+          
+
+      }
+
+//lcd.setCursor(0, 2); 
+      //lcd.print(adctastenwert);
+// End Tastatur
 
 
 //Serial.printf("data.x: %d data.y: %d \t\t",canaldata.x, canaldata.y); 
