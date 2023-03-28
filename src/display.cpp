@@ -34,6 +34,11 @@ extern uint16_t  cursorpos[8][8]; // Aktueller screen: werte fuer page und darau
 
 extern canal_struct canaldata;
 extern canal_struct indata;
+
+extern float battspannungmittel;
+extern float battspannunginterpol;
+extern float spannungvolt;
+extern float slavespannungvolt;
 uint8_t cursortab[10] = {cursortab0,cursortab1,cursortab2,cursortab3,cursortab4,cursortab5,cursortab6,cursortab7,cursortab0,cursortab0};
 uint8_t itemtab[10] = {itemtab0,itemtab1,itemtab2,itemtab3,itemtab4,itemtab5,itemtab6,itemtab7,itemtab0,itemtab0};
 
@@ -191,25 +196,26 @@ void refreshhomescreen(void)
   
   clearblock(18,55,100,8);
   display.setCursor(0,57);
-   
   putint12(lxmittel);
   
 
   display.setCursor(30,57);
   putint(canaldata.x);
 
-/*
+
   display.setCursor(52,57);
-  display.print(lymittel);
+  putint12(lymittel);
+
   display.setCursor(82,57);
   putint(canaldata.y);
- */
+ 
   display.setCursor(62,57);
-  display_write_str("x:",1);
-  display.print(indata.x);
+  //display_write_str("x:",1);
+  //display.print(spannungvolt);
+
   display.setCursor(92,57);
-  display_write_str("y:",1);
-  display.print(indata.y);
+  //display_write_str("y:",1);
+  //display.print(indata.y);
 
 
  /*
@@ -217,24 +223,48 @@ void refreshhomescreen(void)
   display.setCursor(0, 32);
   display.print("ly:");
   display.print(lymittel);
-
-  pfeilvollrechts(30,50,1);
+*/
+  //pfeilvollrechts(30,50,1);
   //display.print(0x03,0x00);
   //display.print('*');
   //clearblock(0,48,60,8);
   display.setCursor(48,32);
-  display.print(canaldata.y);
-  */
+  //display.print(canaldata.y);
+  
 /*
   clearblock(90,0,10,8);
   display.setCursor(90,0);
   display.print(Taste);
   //display.setCursor(110,0);
   */
-uint16_t levelprozent = canaldata.x*100/255;
-//Serial.printf("canaldata.x: %d levelprozent: %d\n",canaldata.x,levelprozent);
- drawlevelmeter(120, 12,8,48,levelprozent);
+  //uint16_t levelprozent = canaldata.x*100/255;
+/*
+  // Levelmeter
+  uint8_t h = 44;
+  float max = 4.2;
+  
+  float level = (spannungvolt-2)/(max-2)*(h);
+  uint8_t levelint = uint8_t(level);
+  //Serial.printf("spannungvolt: %2.2f level: %2.2f levelint: %d\n",spannungvolt,level,levelint);
+  display.setCursor(112,12);
+  display.print("T");
+  drawlevelmeter(112, 20,4,h,levelint);
+  
+  // Slave
+   float slavelevel = 2;
+  if(slavespannungvolt > 2)
+  {
+    slavelevel = (slavespannungvolt-2)/(max-2)*(h);
+  }
+  
+  uint8_t slavelevelint = uint8_t(slavelevel);
+  //Serial.printf("slavespannungvolt: %2.2f slavelevel: %2.2f slavelevelint: %d\n",slavespannungvolt,slavelevel,slavelevelint);
+  display.setCursor(120,12);
+  display.print("R");
+  drawlevelmeter(120, 20,4,h,slavelevelint);
+  */
   display.display();
+
 }// refreshhomescreen
 
 void setsettingscreen(void)
@@ -765,12 +795,23 @@ void drawverticalrect(void)
 
 void drawlevelmeter(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level)
 {
-      display.drawRect(x, y, w, h, WHITE);
-      uint16_t anzeige = level*h/100;
-      display.fillRect(x+1,y+1,w-2,h-anzeige-2,0); // oberen teil leeren
-      display.fillRect(x,y+h-anzeige,w,anzeige,WHITE);
+  /*
+  level in Volt
+  Beginn bei 2V
+  Marke bei 2.5V 11px
+  */
+    uint8_t mark = 11;
+    display.drawRect(x, y, w, h, WHITE);
+    uint16_t anzeige = level; //*h/100;
+    display.fillRect(x+1,y+1,w-2,h-anzeige-2,0); // oberen teil leeren
+    display.fillRect(x,y+h-anzeige+1,w,anzeige,WHITE);
 
-    display.display(); // Update screen with each newly-drawn rectangle
+    display.drawPixel(x-1,y+h-mark,WHITE);
+    display.drawLine(x+1,y+h-mark,x+w-2,y+h-mark,0);
+    display.drawPixel(x+w,y+h-mark,WHITE);
+
+
+    //display.display(); // Update screen with each newly-drawn rectangle
 }
 
 void pfeilvollrechts(uint8_t x, uint8_t y, uint8_t full)

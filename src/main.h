@@ -26,4 +26,3 @@ typedef struct canal_struct
 
 
 
-

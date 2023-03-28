@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "VS_RobotStepper",
+			"path": "../../VS_RobotStepper"
+		},
+		{
+			"name": "VS_RobotAuto_MINI_R",
+			"path": "../../VS_RobotAuto_MINI_R"
+		},
+		{
+			"name": "checkMAC_Address",
+			"path": "../../../../../../../PlatformIO/Projects/checkMAC_Address"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"random": "cpp"
+		}
+	}
+}

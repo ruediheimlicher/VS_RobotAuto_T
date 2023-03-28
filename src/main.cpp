@@ -171,6 +171,7 @@ uint8_t broadcastAddress2[] = {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}; // ESP8266 D
 //uint8_t broadcastAddress3[] = {0x48, 0x3F, 0xDA, 0xA4, 0x36, 0x57}; // RobotStepper
 uint8_t broadcastAddress4[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 // WEMOS MINI MAC: 8c:aa:b5:7b:a3:28 {0x8c,0xaa,0xb5,0x7b,0xa3,0x28}
+
 uint8_t broadcastAddressArray[8][6] = 
 {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 {0x44, 0x17, 0x93, 0x14, 0xF7, 0x17}, // ESP8266 D1 MINI
@@ -1083,7 +1084,7 @@ if (firstrun)
   }
 // register  peer  
 // 1: D1 MINI, 2: RobotStepper
-  memcpy(peerInfo.peer_addr, broadcastAddressArray[1], 6);
+  memcpy(peerInfo.peer_addr, broadcastAddressArray[3], 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
     Serial.println("Failed to add peer 2");
     //return;
@@ -1293,6 +1294,10 @@ if (ledmillis > ledintervall)
 
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 
+   Serial.printf("lx: %d lx. %d\t", canaldata.lx, canaldata.ly);
+  Serial.printf("rx: %d rx. %d\t", canaldata.rx, canaldata.ry);
+  Serial.printf("x: %d x. %d\n", canaldata.x, canaldata.y);
+
     uint16_t rawbattspannung = analogRead(batt_PIN);
     battspannungmittelwertarray[battaveragecounter & 0x07] = rawbattspannung;
     battspannungmittel = 0;
@@ -1325,17 +1330,21 @@ if (ledmillis > ledintervall)
     }
 
 
+    Serial.printf("data.x: %d data.y: %d \t\t",canaldata.x, canaldata.y); 
+Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
+
+
 
     battaveragecounter++;
-    Serial.printf("rawbattspannung: %d  battspannungmittel: %2.2f battspannunginterpol: %2.2f\n",rawbattspannung, battspannungmittel,battspannunginterpol);
+    //Serial.printf("rawbattspannung: %d  battspannungmittel: %2.2f battspannunginterpol: %2.2f\n",rawbattspannung, battspannungmittel,battspannunginterpol);
 
     slavespannungvolt = indata.x;
     //Serial.printf("tastaturwert: %d\n",tastaturwert);
     //Serial.println("led");
     //Serial.println(canaldata.lx);
     //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
-    Serial.printf("canaldata %d \t%d \t", canaldata.x , canaldata.y);
-    Serial.printf("indata %d \t%d \n", indata.x , indata.y);
+    //Serial.printf("canaldata %d \t%d \t", canaldata.x , canaldata.y);
+    //Serial.printf("indata %d \t%d \n", indata.x , indata.y);
     //Serial.printf("%d \t%d DebouncedState: %d\n", lxmittel , lymittel,DebouncedState);
     lcd.setCursor(0,1);
     lcd_puts("data");
@@ -1671,13 +1680,13 @@ canaldata.y = map(uint16_t(floatkanalwerty),mittey - 0x200,mittey + 0x200,0,180)
 
 
 //canaldata.ly = outvalue_ly;
-//Serial.printf("data.x: %d data.y: %d \n",canaldata.x, canaldata.y); 
+
 //canaldata.ly = mixkanalwerty;
 canaldata.ly = uint16_t(floatkanalwerty);
 
 
 
-
+//Serial.printf("data.x: %d data.y: %d \t\t",canaldata.x, canaldata.y); 
 //Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
 
   // Tasten uebergeben
