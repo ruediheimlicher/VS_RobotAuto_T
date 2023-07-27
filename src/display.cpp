@@ -200,23 +200,17 @@ void refreshhomescreen(void)
   
 
   display.setCursor(30,57);
+  //putint(canaldata.lx);
   putint(canaldata.x);
-
 
   display.setCursor(52,57);
   putint12(lymittel);
 
   display.setCursor(82,57);
+  //putint(canaldata.ly);
   putint(canaldata.y);
  
-  display.setCursor(62,57);
-  //display_write_str("x:",1);
-  //display.print(spannungvolt);
-
-  display.setCursor(92,57);
-  //display_write_str("y:",1);
-  //display.print(indata.y);
-
+  
 
  /*
   clearblock(0,32,68,8);
@@ -263,6 +257,10 @@ void refreshhomescreen(void)
   display.print("R");
   drawlevelmeter(120, 20,4,h,slavelevelint);
   */
+ uint16_t levelprozent = canaldata.x*100/255;
+//Serial.printf("canaldata.x: %d levelprozent: %d\n",canaldata.x,levelprozent);
+ drawlevelmeter(120, 12,8,48,levelprozent);
+
   display.display();
 
 }// refreshhomescreen
@@ -794,6 +792,18 @@ void drawverticalrect(void)
 }
 
 void drawlevelmeter(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level)
+{
+  // von 23
+      display.drawRect(x, y, w, h, WHITE);
+      uint16_t anzeige = level*h/100;
+      display.fillRect(x+1,y+1,w-2,h-anzeige-2,0); // oberen teil leeren
+      display.fillRect(x,y+h-anzeige,w,anzeige,WHITE);
+
+    display.display(); // Update screen with each newly-drawn rectangle
+}
+
+
+void drawlevelmeter_volt(uint8_t x,uint8_t y,uint8_t w,uint8_t h, uint8_t level)
 {
   /*
   level in Volt

@@ -192,7 +192,7 @@ uint8_t peerpos = 1; // geladener peer
 //#define MIN_ADC 700
 
 /*
-// joystick runf
+// joystick rund
 #define MAX_ADC 4050 // Max wert vom ADC
 #define MIN_ADC 1250 // Min wert vom ADC
 */
@@ -207,7 +207,8 @@ uint16_t   servomittearray[NUM_SERVOS] = {}; // Werte fuer Mitte
 uint16_t   maxADCarray[NUM_SERVOS] = {};
 uint16_t   minADCarray[NUM_SERVOS] = {};
 
- #define batt_PIN 33
+/* xxx
+#define batt_PIN 33
 uint16_t battspannung =0;
 float battspannungmittel =0;
 uint16_t battspannungmittelwertarray[AVERAGE];
@@ -217,7 +218,7 @@ uint16_t spannungtable[] = {0,39,150,250,366,475,583,695,801,915,1018};
 float battspannunginterpol = 0;
 float spannungvolt = 2;
 float slavespannungvolt = 2;
-
+*/
 uint16_t maxwinkel = 180;
 
 #define KANAL_X 0
@@ -437,13 +438,15 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
 }
 //callback function that will be executed when data is received
 // Callback when data is received
+// /* xxx
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   memcpy(&indata, incomingData, sizeof(canaldata));
-  Serial.print("Bytes received: ");
-  Serial.println(len);
-  Serial.printf("indata x: %d y. %d\n", indata.x, indata.y);
+  //Serial.print("Bytes received: ");
+  //Serial.println(len);
+  //Serial.printf("indata x: %d y. %d\n", indata.x, indata.y);
  
 }
+//*/
 /*
 void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) 
 {
@@ -972,7 +975,7 @@ adc1_config_width(ADC_WIDTH_BIT_12);
 
   Serial.printf("registererr: %d\n",registererr);
 
-  esp_now_register_recv_cb(OnDataRecv);
+   esp_now_register_recv_cb(OnDataRecv);
 
     
   // register peer
@@ -1031,7 +1034,7 @@ adc1_config_width(ADC_WIDTH_BIT_12);
    adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_11);
    adc1_config_channel_atten(ADC1_CHANNEL_3,ADC_ATTEN_DB_11);
    adc1_config_channel_atten(ADC1_CHANNEL_4,ADC_ATTEN_DB_11); // Tastatur
-  adc1_config_channel_atten(ADC1_CHANNEL_5,ADC_ATTEN_DB_11); // Batt
+  // xxx adc1_config_channel_atten(ADC1_CHANNEL_5,ADC_ATTEN_DB_11); // Batt
 
   adc1_config_width(ADC_WIDTH_BIT_12);
 
@@ -1091,7 +1094,7 @@ if (firstrun)
   }
   else
   {
-    Serial.println("add peer 2 OK");
+    Serial.println("add peer 1 OK");
   }
  buttonstatus |= (1<<START_TON);
  sethomescreen();
@@ -1293,10 +1296,12 @@ if (ledmillis > ledintervall)
     //drawlevelmeter(120, 12,8,48,ubatt%100);
 
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-
-   Serial.printf("lx: %d lx. %d\t", canaldata.lx, canaldata.ly);
+  /* xxx
+   Serial.printf("\t\tlx: %d ly. %d\t", canaldata.lx, canaldata.ly);
+   Serial.printf("lxmittel: %d lymittel %d\t", lxmittel, lymittel);
   Serial.printf("rx: %d rx. %d\t", canaldata.rx, canaldata.ry);
-  Serial.printf("x: %d x. %d\n", canaldata.x, canaldata.y);
+  Serial.printf("cd.x: %d cd.y %d\n", canaldata.x, canaldata.y);
+  
 
     uint16_t rawbattspannung = analogRead(batt_PIN);
     battspannungmittelwertarray[battaveragecounter & 0x07] = rawbattspannung;
@@ -1329,9 +1334,9 @@ if (ledmillis > ledintervall)
       }
     }
 
-
-    Serial.printf("data.x: %d data.y: %d \t\t",canaldata.x, canaldata.y); 
-Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
+//
+//    Serial.printf("data.x: %d data.y: %d \t\t",canaldata.x, canaldata.y); 
+//Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly); 
 
 
 
@@ -1339,12 +1344,14 @@ Serial.printf("data.lx: %d data.ly: %d \n",canaldata.lx, canaldata.ly);
     //Serial.printf("rawbattspannung: %d  battspannungmittel: %2.2f battspannunginterpol: %2.2f\n",rawbattspannung, battspannungmittel,battspannunginterpol);
 
     slavespannungvolt = indata.x;
+
     //Serial.printf("tastaturwert: %d\n",tastaturwert);
     //Serial.println("led");
     //Serial.println(canaldata.lx);
     //Serial.printf("%d \t%d *%d*\n", canaldata.lx , canaldata.ly, canaldata.digi);
     //Serial.printf("canaldata %d \t%d \t", canaldata.x , canaldata.y);
     //Serial.printf("indata %d \t%d \n", indata.x , indata.y);
+    */ //xxx
     //Serial.printf("%d \t%d DebouncedState: %d\n", lxmittel , lymittel,DebouncedState);
     lcd.setCursor(0,1);
     lcd_puts("data");
@@ -1469,7 +1476,15 @@ if (DebouncedState & 0x04)
       }
     }
 
+// Mitte bestimmen
+uint16_t mittex = servomittearray[KANAL_X];
+mittex = mapADC(mittex);
 
+uint16_t mittey = servomittearray[KANAL_Y];
+mittey = mapADC(mittey);
+
+
+// ADC lesen
 uint16_t rawlx = adc1_get_raw(ADC1_CHANNEL_0);
 lxmittelwertarray[(averagecounter & 0x07)] = rawlx;
 lxmittel = 0;
@@ -1481,9 +1496,9 @@ for (int i=0;i < AVERAGE;i++)
 
  // Grenzwerte einhalten
 //uint16_t lx = tickslimited(lxmittel);
+//uint16_t lx = lxmittel;//
 uint16_t lx = mapADC(lxmittel);
-uint16_t kanalwertx = lx;
-
+uint16_t kanalwertx = lx; // Werte von ADC
 //Serial.printf("lxmittel: %d kanalwertx: %d \t",lxmittel,kanalwertx); 
 
 
@@ -1496,45 +1511,38 @@ for (int i=0;i < AVERAGE;i++)
 }
 lymittel /= AVERAGE;
 
-
-
  // Grenzwerte einhalten
 //uint16_t ly = tickslimited(lymittel); // Grenzen einhalten, MAX_TICKS, MIN_TICKS
-
-uint16_t mittex = servomittearray[KANAL_X];
-mittex = mapADC(mittex);
-
-uint16_t mittey = servomittearray[KANAL_Y];
-mittey = mapADC(mittey);
-
 //Serial.printf("rawlx: %d \t rawly: %d \n",rawlx,rawly); 
 
 // adc-wert(Ausgabe des ADC) auf Tick-Bereich (ms, Impulslaenge) umsetzen
 uint16_t ly = mapADC(lymittel);
 
-//Serial.printf("lxmittel: %d lx: %d mittex: %d  lymittel: %d ly: %d mittey: %d\n",lxmittel, lx, mittex,lymittel, ly, mittey); 
-
 uint16_t kanalwerty = ly; // Werte von ADC
-
 //Serial.printf("lymittel: %d kanalwerty: %d \n",lymittel,kanalwerty); 
 
+// Expo x
 uint16_t expokanalwertx = expovalue(KANAL_X,expolevelarray[KANAL_X],kanalwertx); // expolevelarray enthaelt expo-levels pro knal
 
-//Serial.printf("kanalwertx: \t %d \texpokanalwertx: \t %d\t\t",kanalwertx,expokanalwertx);
+//Serial.printf("\t\t\t*** kanalwertx: \t %d \texpokanalwertx: \t %d\t\t",kanalwertx,expokanalwertx);
 kanalwertx = expokanalwertx;
 
-
+// Expo y
 uint16_t expokanalwerty = expovalue(KANAL_Y,expolevelarray[KANAL_Y],kanalwerty);
 
 
 //Serial.printf(" kanalwerty: \t %d \t expokanalwerty: \t %d\n",kanalwerty,expokanalwerty);
 kanalwerty = expokanalwerty;
 
+
 canaldata.lx = kanalwertx;
 canaldata.ly = kanalwerty;
 
+// for Robotstepper
 canaldata.rx = lx;
 canaldata.ry = ly;
+// end for Robotstepper
+
 
  // MIX, von RC_22_32
 
@@ -1624,9 +1632,9 @@ else
 uint16_t outvalue_lx = servoticks(kanalwertx);
 
 //canaldata.lx = outvalue_lx;
-//canaldata.lx = mixkanalwertx;
+canaldata.lx = mixkanalwertx;
 
-canaldata.lx = uint16_t(floatkanalwertx);
+//canaldata.lx = uint16_t(floatkanalwertx);
 
 //canaldata.x = map(uint16_t(floatkanalwertx),MIN_TICKS,MAX_TICKS,0,180);
 canaldata.x = map(uint16_t(floatkanalwertx),mittex - 0x200,mittex + 0x200,0,180);
@@ -1644,8 +1652,8 @@ canaldata.y = map(uint16_t(floatkanalwerty),mittey - 0x200,mittey + 0x200,0,180)
 
 //canaldata.ly = outvalue_ly;
 
-//canaldata.ly = mixkanalwerty;
-canaldata.ly = uint16_t(floatkanalwerty);
+canaldata.ly = mixkanalwerty;
+//canaldata.ly = uint16_t(floatkanalwerty);
 
 
 // Start Tastatur

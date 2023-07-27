@@ -9,10 +9,6 @@
 			"path": "."
 		},
 		{
-			"name": "VS_RobotStepper",
-			"path": "../VS_RobotStepper"
-		},
-		{
 			"name": "RobotAuto_raw",
 			"path": "../../../../../../PlatformIO/Projects/RobotAuto_raw"
 		},
